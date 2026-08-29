@@ -1,0 +1,4 @@
+query_idx,primary_attr,attr0_low,attr0_high,attr1_low,attr1_high,attr2_low,attr2_high,expected_top3,expected_squared_l2
+0,0,0,7,0,1,0,1,0 1 2,0.0 1.0 4.0
+1,0,1,7,0,0,1,1,3 5 1,1.0 1.0 9.0
+2,0,2,6,1,1,0,0,4 6 2,1.0 1.0 9.0
