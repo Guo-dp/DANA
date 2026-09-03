@@ -1,27 +1,46 @@
-/build*/
-/index/
-/logs/
-/results/raw/
-/tmp/
-/out/
-/.vs/
-/.vscode/
-/.idea/
-/.venv/
+# Python
 __pycache__/
 *.py[cod]
+.venv/
+
+# Build products
+/build/
+/build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.o
+*.obj
+*.exe
+
+# Generated indexes and large vectors
+/index/
 *.dsg
 *.hnsw
-*.index
-*.log
-*.aux
-*.fmt
-*.zip
-*.pkl
-/data/*
+/data/**/*.fbin
+/data/**/*.ibin
+/data/**/*.hdf5
+/data/**/*.h5
+/data/**/attrs.csv
+/data/**/multi_dsg/
+
+# Keep deterministic bundled validation data
+!/data/vector_calc_sanity/
+!/data/vector_calc_sanity/**
 !/data/multiattr_smoke/
 !/data/multiattr_smoke/**
 !/data/multiattr_10k/
 !/data/multiattr_10k/**
-!/data/vector_calc_sanity/
-!/data/vector_calc_sanity/**
+
+# Runtime logs are archived under results/
+/logs/
+*.log
+
+# Local sync and editor artifacts
+/server_sync_*/
+/github_*_release/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,32 @@
+{
+  "size": 10000,
+  "dimension": 32,
+  "query_count": 120,
+  "topk": 10,
+  "attribute_count": 3,
+  "primary_attribute": 0,
+  "seed": 2027,
+  "profiles": [
+    {
+      "name": "attr0_narrow",
+      "attr0_ratio": 0.1,
+      "attr1_ratio": 0.5,
+      "attr2_ratio": 0.5,
+      "query_count": 40
+    },
+    {
+      "name": "attr1_narrow",
+      "attr0_ratio": 0.5,
+      "attr1_ratio": 0.1,
+      "attr2_ratio": 0.5,
+      "query_count": 40
+    },
+    {
+      "name": "attr2_narrow",
+      "attr0_ratio": 0.5,
+      "attr1_ratio": 0.5,
+      "attr2_ratio": 0.1,
+      "query_count": 40
+    }
+  ]
+}

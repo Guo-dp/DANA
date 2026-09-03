@@ -19,30 +19,7 @@
 #include <unordered_set>
 #include <vector>
 #include <algorithm>
-#include <chrono>
-#ifdef _WIN32
-#ifdef CountTime
-#undef CountTime
-#endif
-#endif
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-using timeval = std::chrono::system_clock::time_point;
-
-inline int gettimeofday(timeval* tp, void* tzp) {
-    (void)tzp;
-    *tp = std::chrono::system_clock::now();
-    return 0;
-}
-#else
-// 非 Windows 系统保留原有头文件
 #include <sys/time.h>
-#endif
 
 #ifdef __linux__
 #include "sys/sysinfo.h"

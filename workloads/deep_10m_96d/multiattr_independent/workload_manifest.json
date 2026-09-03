@@ -1,0 +1,99 @@
+{
+  "base": "data/deep/base.10M.fbin",
+  "query": "data/deep/query.public.10K.fbin",
+  "groundtruth": "data/deep/groundtruth.public.10K.ibin",
+  "base_count": 10000000,
+  "selected_count": 10000000,
+  "base_dimension": 96,
+  "query_count": 10000,
+  "selected_queries": 1000,
+  "query_dimension": 96,
+  "runnable": true,
+  "attribute_count": 3,
+  "attribute_mode": "independent",
+  "attribute_semantics": [
+    "random_rank",
+    "random_rank",
+    "random_rank"
+  ],
+  "multi_only_profiles": {
+    "attr0_narrow": 250,
+    "attr1_narrow": 250,
+    "attr2_narrow": 250,
+    "balanced": 250
+  },
+  "paper_compat_profiles": {
+    "single_attr0": 67,
+    "attr1_narrow": 200,
+    "attr2_narrow": 200,
+    "balanced": 200,
+    "attr0_narrow": 200,
+    "single_attr1": 67,
+    "single_attr2": 66
+  },
+  "dynamic_trace": {
+    "initial_count": 8000000,
+    "insert_count": 2000000
+  },
+  "baseline_applicability": {
+    "fully_feasible": {
+      "Prefiltering": {
+        "workloads": [
+          "static",
+          "ordered",
+          "unordered"
+        ],
+        "multi_attribute_rule": "intersect all attribute ranges, exact scan"
+      },
+      "Postfiltering": {
+        "workloads": [
+          "static",
+          "ordered",
+          "unordered"
+        ],
+        "multi_attribute_rule": "HNSW navigation, conjunction result filter"
+      },
+      "Acorn": {
+        "workloads": [
+          "static",
+          "ordered",
+          "unordered"
+        ],
+        "multi_attribute_rule": "conjunctive predicate in predicate-aware search",
+        "implementation": "external; workload generated only"
+      },
+      "Multi-DSG": {
+        "workloads": [
+          "static",
+          "ordered",
+          "unordered"
+        ],
+        "multi_attribute_rule": "3 one-dimensional DSG indexes, adaptive navigation"
+      }
+    },
+    "restricted_extension": {
+      "SeRF": {
+        "workloads": [
+          "static",
+          "ordered"
+        ],
+        "restriction": "one ordered partition attribute per run; remaining attributes are result filters"
+      },
+      "WinFilter": {
+        "workloads": [
+          "static"
+        ],
+        "restriction": "segment tree on one selected attribute; remaining attributes are result filters"
+      },
+      "iRange": {
+        "workloads": [
+          "static"
+        ],
+        "restriction": "segment tree on one selected attribute; remaining attributes are result filters"
+      }
+    },
+    "skipped": {
+      "true_multidimensional_SeRF_WinFilter_iRange": "not generated: direct m-dimensional tree/index extension has combinatorial space growth and is not present in this repository"
+    }
+  }
+}

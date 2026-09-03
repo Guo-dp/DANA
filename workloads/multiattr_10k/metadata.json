@@ -1,0 +1,39 @@
+{
+  "size": 10000,
+  "dimension": 32,
+  "query_count": 100,
+  "topk": 10,
+  "attribute_count": 3,
+  "primary_attribute": 0,
+  "seed": 2026,
+  "profiles": [
+    {
+      "name": "narrow",
+      "attr0_ratio": 0.1,
+      "attr1_ratio": 0.15,
+      "attr2_ratio": 0.15,
+      "query_count": 25
+    },
+    {
+      "name": "medium",
+      "attr0_ratio": 0.25,
+      "attr1_ratio": 0.25,
+      "attr2_ratio": 0.25,
+      "query_count": 25
+    },
+    {
+      "name": "mixed",
+      "attr0_ratio": 0.32,
+      "attr1_ratio": 0.2,
+      "attr2_ratio": 0.5,
+      "query_count": 25
+    },
+    {
+      "name": "broad",
+      "attr0_ratio": 1.0,
+      "attr1_ratio": 0.8,
+      "attr2_ratio": 0.8,
+      "query_count": 25
+    }
+  ]
+}

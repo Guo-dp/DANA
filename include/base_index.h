@@ -15,6 +15,8 @@
 
 #include "data_wrapper.h"
 
+#include "filter_query.h"
+
 static const unsigned default_M = 16;
 static const unsigned default_ef_construction = 400;
 
@@ -78,5 +80,8 @@ public:
     }
 
     virtual void rangeSearch(const float *query, const std::pair<int, int> query_bound) = 0;
+
+    virtual void rangeSearch(const float *query, const MultiRangeQuery &filter) = 0;
+
 };
 

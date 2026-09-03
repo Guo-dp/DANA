@@ -21,8 +21,9 @@
 #include <vector>
 
 #include "base_hnsw/hnswalg.h"
-#include "data_wrapper.h"
 #include "base_index.h"
+#include "data_wrapper.h"
+#include "filter_query.h"
 
 namespace dsg {
 
@@ -90,6 +91,29 @@ public:
      */
     void rangeSearch(const float *query,
                      const std::pair<int, int> query_bound) override;
+
+    /**
+     * Multi-DSG query.
+     *
+     * Graph labels are ranks under navigation_attr.
+     * rank_to_original converts graph rank to original data ID.
+     *
+     * All primary-range-valid nodes may participate in navigation.
+     * Only nodes passing all attributes enter the result heap.
+     */
+    void rangeSearchMultiDsg(
+        const float *query,
+        const std::pair<int, int> &query_bound,
+        const MultiRangeQuery &filter,
+        const DataWrapper *original_data,
+        const std::vector<unsigned> &rank_to_original);
+
+    void rangeSearch(const float *query,
+                    const MultiRangeQuery &filter) override;
+    void rangeSearchMultiExact(const float *query,
+                               const MultiRangeQuery &filter);
+
+
 
     /**
      * @brief Persist the compressed forward edges to disk.
@@ -198,6 +222,18 @@ private:
     std::vector<unsigned> right_lower_;
     std::vector<unsigned> right_upper_;
 
+
+
+    unsigned attr_count_ = 0;
+    std::vector<unsigned> mbr_low_lower_;
+    std::vector<unsigned> mbr_low_upper_;
+    std::vector<unsigned> mbr_high_lower_;
+    std::vector<unsigned> mbr_high_upper_;
+
+
+
+
+
     // Dynamic support
     struct NodeDegree {
         uint16_t fwd = 0; // number of forward (sorted) edges
@@ -221,6 +257,23 @@ private:
 
     void addReverseEdge(unsigned src, unsigned dst, unsigned ll, unsigned lu, unsigned rl, unsigned ru);
     void recompress(unsigned label);
+
+
+
+    void resizeMbrStorage(std::size_t edge_capacity);
+    void fillLooseMbrForEdge(std::size_t edge_idx,
+                             unsigned dst_label,
+                             unsigned primary_attr,
+                             unsigned ll,
+                             unsigned lu,
+                             unsigned rl,
+                             unsigned ru);
+    bool edgeActiveMulti(std::size_t edge_idx,
+                         const std::vector<RangeBound> &rank_bounds) const;
+
+
+
+
 
     // Temporary structure used for sorting/merging/scoring edges during build/insert/recompress.
     struct TempEdge {

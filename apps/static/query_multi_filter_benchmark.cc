@@ -123,8 +123,8 @@ std::vector<FilterCase> readFilters(const std::string &path, unsigned attr_count
 
         std::size_t position = 3;
         for (unsigned attr = 0; attr < attr_count; ++attr) {
-            current.filter.bounds[attr].low = std::stoul(columns[position++]);
-            current.filter.bounds[attr].high = std::stoul(columns[position++]);
+            current.filter.bounds[attr].low = std::stof(columns[position++]);
+            current.filter.bounds[attr].high = std::stof(columns[position++]);
         }
         cases.push_back(std::move(current));
     }

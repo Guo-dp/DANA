@@ -1,12 +1,49 @@
-name: Validate partial snapshot
-on: [push, pull_request]
+name: Validate artifact
+
+on:
+  push:
+  pull_request:
+
 jobs:
-  validate-data-and-scripts:
+  build-and-smoke-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m compileall -q scripts
-      - run: python scripts/verify_bundled_data.py
+      - name: Validate Python and bundled data
+        run: |
+          python -m compileall -q scripts analysis
+          python scripts/verify_bundled_data.py
+      - name: Configure and build C++ targets
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j 2
+      - name: Build deterministic DSG indexes
+        run: |
+          mkdir -p index/static/vector_calc_sanity/multi_dsg
+          for attr in 0 1 2; do
+            ./build/apps/build_static_index \
+              -dataset vector_calc_sanity_attr${attr} \
+              -N 8 \
+              -dataset_path data/vector_calc_sanity/multi_dsg/base.attr${attr}.fbin \
+              -query_path data/vector_calc_sanity/query.3.fbin \
+              -index_path index/static/vector_calc_sanity/multi_dsg/attr${attr}.dsg \
+              -k 4 -ef_construction 8 -ef_max 8 -alpha 1.0
+          done
+      - name: Run integrated Multi-DSG smoke test
+        run: |
+          ./build/apps/query_multi_dsg_benchmark \
+            -dataset vector_calc_sanity \
+            -N 8 \
+            -dataset_path data/vector_calc_sanity/base.8.fbin \
+            -query_path data/vector_calc_sanity/query.3.fbin \
+            -index_root index/static/vector_calc_sanity/multi_dsg \
+            -reordered_data_root data/vector_calc_sanity/multi_dsg \
+            -attr_path data/vector_calc_sanity/attrs.csv \
+            -attr_count 3 \
+            -filter_path data/vector_calc_sanity/filters.csv \
+            -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive \
+            | tee smoke.log
+          grep -Eq '^all[[:space:]]+queries=3 recall=1\.0000' smoke.log

@@ -25,25 +25,12 @@
 #include <tuple>
 #include <xmmintrin.h>
 #include <immintrin.h>
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
 
 namespace dsg {
 
 namespace {
 using Clock = std::chrono::steady_clock;
 using Candidate = std::pair<DynamicSegmentGraph::DistType, unsigned>;
-
-inline int CountTrailingZeros(unsigned int value) {
-#ifdef _MSC_VER
-    unsigned long index = 0;
-    _BitScanForward(&index, value);
-    return static_cast<int>(index);
-#else
-    return __builtin_ctz(value);
-#endif
-}
 
 // Support heuristic for an edge (center -> v) under the full space of query ranges.
 // A query range [L, R] can use this edge only if:
@@ -110,6 +97,79 @@ void DynamicSegmentGraph::reserveGraphStorage(std::size_t total_rows_capacity,
     right_lower_.reserve(total_edge_capacity);
     right_upper_.reserve(total_edge_capacity);
 }
+
+
+
+
+void DynamicSegmentGraph::resizeMbrStorage(std::size_t edge_capacity) {
+    attr_count_ = data_wrapper != nullptr && data_wrapper->hasAttributes()
+                      ? static_cast<unsigned>(data_wrapper->attrs.size())
+                      : 0;
+    if (attr_count_ == 0) {
+        return;
+    }
+
+    mbr_low_lower_.resize(edge_capacity * attr_count_);
+    mbr_low_upper_.resize(edge_capacity * attr_count_);
+    mbr_high_lower_.resize(edge_capacity * attr_count_);
+    mbr_high_upper_.resize(edge_capacity * attr_count_);
+}
+
+void DynamicSegmentGraph::fillLooseMbrForEdge(
+    std::size_t edge_idx,
+    unsigned dst_label,
+    unsigned primary_attr,
+    unsigned ll,
+    unsigned lu,
+    unsigned rl,
+    unsigned ru) {
+    if (attr_count_ == 0) {
+        return;
+    }
+
+    const unsigned n = static_cast<unsigned>(data_wrapper->data_size);
+    for (unsigned a = 0; a < attr_count_; ++a) {
+        const std::size_t off = edge_idx * attr_count_ + a;
+        if (a == primary_attr) {
+            mbr_low_lower_[off] = ll;
+            mbr_low_upper_[off] = lu;
+            mbr_high_lower_[off] = rl;
+            mbr_high_upper_[off] = ru;
+        } else {
+            const unsigned r = data_wrapper->rankOf(a, dst_label);
+            mbr_low_lower_[off] = 0;
+            mbr_low_upper_[off] = r;
+            mbr_high_lower_[off] = r;
+            mbr_high_upper_[off] = n - 1;
+        }
+    }
+}
+
+bool DynamicSegmentGraph::edgeActiveMulti(
+    std::size_t edge_idx,
+    const std::vector<RangeBound> &rank_bounds) const {
+    if (attr_count_ == 0) {
+        return true;
+    }
+
+    for (unsigned a = 0; a < attr_count_; ++a) {
+        const std::size_t off = edge_idx * attr_count_ + a;
+        const unsigned ql = rank_bounds[a].low;
+        const unsigned qr = rank_bounds[a].high;
+
+        if (ql < mbr_low_lower_[off] || ql > mbr_low_upper_[off]) {
+            return false;
+        }
+        if (qr < mbr_high_lower_[off] || qr > mbr_high_upper_[off]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
+
 
 /**
  * @brief Select a subset of segment edges by support-weighted score.
@@ -473,6 +533,12 @@ void DynamicSegmentGraph::build(const std::vector<unsigned> &labels) {
     right_lower_.resize(total_edges);
     right_upper_.resize(total_edges);
 
+
+
+    resizeMbrStorage(total_edges);
+
+
+
     std::size_t current_offset = 0;
     for (std::size_t i = 0; i < num_rows; ++i) {
         row_offset_[i] = current_offset;
@@ -482,6 +548,18 @@ void DynamicSegmentGraph::build(const std::vector<unsigned> &labels) {
             left_upper_[current_offset] = edge.left_upper;
             right_lower_[current_offset] = edge.right_lower;
             right_upper_[current_offset] = edge.right_upper;
+
+            
+
+            fillLooseMbrForEdge(current_offset,
+                edge.external_id,
+                data_wrapper->primary_attr_id,
+                edge.left_lower,
+                edge.left_upper,
+                edge.right_lower,
+                edge.right_upper);
+
+
             current_offset++;
         }
     }
@@ -733,7 +811,7 @@ void DynamicSegmentGraph::rangeSearch(const float *query,
                 int valid_mask = (~fail_mask) & 0xF;
 
                 while (valid_mask) {
-                    int bit = CountTrailingZeros(static_cast<unsigned int>(valid_mask));
+                    int bit = __builtin_ctz(valid_mask);
                     unsigned neighbor = neighbors_ptr[current_scan_idx + bit];
                     
                     // Check visited status
@@ -820,6 +898,7 @@ void DynamicSegmentGraph::rangeSearch(const float *query,
     returned_nns.clear();
     while (!top_candidates.empty()) {
         const auto [dist, lbl] = top_candidates.top();
+        (void)dist;
         returned_nns.emplace_back(lbl);
         top_candidates.pop();
     }
@@ -827,6 +906,714 @@ void DynamicSegmentGraph::rangeSearch(const float *query,
     last_hop_count_ = hop_counter;
     last_distance_eval_count_ = distance_eval_count;
 }
+
+void DynamicSegmentGraph::rangeSearchMultiDsg(
+    const float *query,
+    const std::pair<int, int> &query_bound,
+    const MultiRangeQuery &filter,
+    const DataWrapper *original_data,
+    const std::vector<unsigned> &rank_to_original) {
+
+    const int left = query_bound.first;
+    const int right = query_bound.second;
+
+    const unsigned left_u = static_cast<unsigned>(left);
+    const unsigned right_u = static_cast<unsigned>(right);
+
+    hnswlib::VisitedList *vl = visited_list_pool_->getFreeVisitedList();
+    hnswlib::vl_type *visited_array = vl->mass;
+    hnswlib::vl_type visited_array_tag = vl->curV;
+    std::size_t hop_counter = 0;
+    std::size_t distance_eval_count = 0;
+
+    auto timed_distance = [&](unsigned label) -> DistType {
+        ++distance_eval_count;
+        const DistType dist =
+            dist_func_(query, data_wrapper->nodes[label], dist_func_param_);
+        return dist;
+    };
+
+    auto cmp = [](const Candidate &lhs, const Candidate &rhs) {
+        return lhs.first > rhs.first;
+    };
+    std::priority_queue<Candidate, std::vector<Candidate>, decltype(cmp)>
+        candidate_set(cmp);
+    std::priority_queue<Candidate> exploration_top;
+    std::priority_queue<Candidate> result_top;
+    std::vector<unsigned> fetched_nns;
+    fetched_nns.reserve(search_ef);
+
+    auto try_add_result = [&](unsigned rank, DistType distance) {
+        if (rank >= rank_to_original.size()) {
+            return;
+        }
+
+        const unsigned original_id = rank_to_original[rank];
+
+        if (!original_data->passFilter(original_id, filter)) {
+            return;
+        }
+
+        result_top.emplace(distance, original_id);
+
+        if (result_top.size() > query_topK) {
+            result_top.pop();
+        }
+    };
+
+    auto try_enqueue_seed = [&](unsigned label) -> bool {
+        if (!isInsertedLabel(label)) {
+            return false;
+        }
+        if (visited_array[label] == visited_array_tag) {
+            return false;
+        }
+        visited_array[label] = visited_array_tag;
+        const DistType dist = timed_distance(label);
+
+        candidate_set.emplace(dist, label);
+        exploration_top.emplace(dist, label);
+
+        if (exploration_top.size() > search_ef) {
+            exploration_top.pop();
+        }
+
+        try_add_result(label, dist);
+        return true;
+    };
+
+    const unsigned range_span = right_u - left_u + 1;
+    constexpr double kSmallRangeFrac = 0.02;
+    const bool skip_range_envelope =
+        static_cast<double>(range_span) <
+        kSmallRangeFrac * static_cast<double>(data_wrapper->data_size);
+
+    constexpr unsigned kProbeRadius = 64;
+    auto enqueue_nearby_seed = [&](unsigned anchor) {
+        if (try_enqueue_seed(anchor)) {
+            return;
+        }
+        auto maxD = std::min(kProbeRadius, right_u - anchor);
+        for (unsigned d = 1; d <= maxD; ++d) {
+            if (try_enqueue_seed(anchor + d)) {
+                return;
+            }
+        }
+    };
+
+    enqueue_nearby_seed(left_u);
+    enqueue_nearby_seed(left_u + range_span / 2);
+    enqueue_nearby_seed(left_u + range_span / 4);
+    enqueue_nearby_seed(left_u + 3 * range_span / 4);
+
+    if (candidate_set.empty()) {
+        constexpr unsigned kFallbackScan = 4096;
+        unsigned scanned = 0;
+        for (unsigned probe = left_u;
+             probe <= right_u && scanned < kFallbackScan;
+             ++probe, ++scanned) {
+            if (try_enqueue_seed(probe)) {
+                break;
+            }
+        }
+    }
+    if (candidate_set.empty()) {
+        returned_nns.clear();
+        last_hop_count_ = 0;
+        last_distance_eval_count_ = 0;
+        visited_list_pool_->releaseVisitedList(vl);
+        std::cout << "[DSG] No inserted seed found in the query range"
+                  << std::endl;
+        return;
+    }
+
+    const __m128i sign_bit = _mm_set1_epi32(0x80000000);
+    const __m128i v_left_u = _mm_set1_epi32(static_cast<int>(left_u));
+    const __m128i v_right_u = _mm_set1_epi32(static_cast<int>(right_u));
+    const __m128i v_left_u_adj = _mm_xor_si128(v_left_u, sign_bit);
+    const __m128i v_right_u_adj = _mm_xor_si128(v_right_u, sign_bit);
+
+    const unsigned *neighbors_ptr = neighbors_.data();
+    const unsigned *ll_ptr = left_lower_.data();
+    const unsigned *lu_ptr = left_upper_.data();
+    const unsigned *rl_ptr = right_lower_.data();
+    const unsigned *ru_ptr = right_upper_.data();
+
+    while (!candidate_set.empty()) {
+        const auto [dist, current] = candidate_set.top();
+        candidate_set.pop();
+        ++hop_counter;
+
+        if (exploration_top.size() >= search_ef &&
+            result_top.size() >= query_topK &&
+            dist > exploration_top.top().first) {
+            break;
+        }
+
+        const unsigned current_label = current;
+        if (current_label >= label_to_row_.size()) {
+            continue;
+        }
+        const int32_t row_i = label_to_row_[current_label];
+        if (row_i < 0) {
+            continue;
+        }
+        const size_t row = static_cast<size_t>(row_i);
+
+        const size_t start_idx = row_offset_[row];
+
+        const auto &deg = node_degrees_[row];
+        const size_t sorted_count = static_cast<size_t>(deg.fwd);
+        const size_t reverse_count = static_cast<size_t>(deg.rev);
+        const size_t sorted_end_idx = start_idx + sorted_count;
+
+        fetched_nns.clear();
+
+        auto start_it = neighbors_.begin() + start_idx;
+        auto sorted_end_it = neighbors_.begin() + sorted_end_idx;
+        auto it = std::lower_bound(start_it, sorted_end_it, left_u);
+
+        size_t current_scan_idx = std::distance(neighbors_.begin(), it);
+
+        if (!skip_range_envelope) {
+            for (; current_scan_idx + 4 <= sorted_end_idx;
+                 current_scan_idx += 4) {
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        neighbors_ptr + current_scan_idx + 16),
+                    _MM_HINT_T0);
+
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        ll_ptr + current_scan_idx + 16),
+                    _MM_HINT_T0);
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        lu_ptr + current_scan_idx + 16),
+                    _MM_HINT_T0);
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        rl_ptr + current_scan_idx + 16),
+                    _MM_HINT_T0);
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        ru_ptr + current_scan_idx + 16),
+                    _MM_HINT_T0);
+
+                __m128i v_nbr = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i *>(
+                        neighbors_ptr + current_scan_idx));
+
+                __m128i v_nbr_adj = _mm_xor_si128(v_nbr, sign_bit);
+                __m128i v_break_cmp =
+                    _mm_cmpgt_epi32(v_nbr_adj, v_right_u_adj);
+
+                if (_mm_movemask_ps(_mm_castsi128_ps(v_break_cmp)) != 0) {
+                    break;
+                }
+
+                __m128i v_ll = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i *>(
+                        ll_ptr + current_scan_idx));
+                __m128i v_lu = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i *>(
+                        lu_ptr + current_scan_idx));
+                __m128i v_rl = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i *>(
+                        rl_ptr + current_scan_idx));
+                __m128i v_ru = _mm_loadu_si128(
+                    reinterpret_cast<const __m128i *>(
+                        ru_ptr + current_scan_idx));
+
+                v_ll = _mm_xor_si128(v_ll, sign_bit);
+                v_lu = _mm_xor_si128(v_lu, sign_bit);
+                v_rl = _mm_xor_si128(v_rl, sign_bit);
+                v_ru = _mm_xor_si128(v_ru, sign_bit);
+
+                __m128i c1_fail = _mm_cmpgt_epi32(v_ll, v_left_u_adj);
+                __m128i c2_fail = _mm_cmpgt_epi32(v_left_u_adj, v_lu);
+                __m128i c3_fail = _mm_cmpgt_epi32(v_rl, v_right_u_adj);
+                __m128i c4_fail = _mm_cmpgt_epi32(v_right_u_adj, v_ru);
+
+                __m128i any_fail = _mm_or_si128(c1_fail, c2_fail);
+                any_fail =
+                    _mm_or_si128(any_fail, _mm_or_si128(c3_fail, c4_fail));
+
+                int fail_mask =
+                    _mm_movemask_ps(_mm_castsi128_ps(any_fail));
+                int valid_mask = (~fail_mask) & 0xF;
+
+                while (valid_mask) {
+                    int bit = __builtin_ctz(valid_mask);
+                    unsigned neighbor =
+                        neighbors_ptr[current_scan_idx + bit];
+
+                    if (visited_array[neighbor] != visited_array_tag) {
+                        fetched_nns.push_back(neighbor);
+                        _mm_prefetch(
+                            reinterpret_cast<const char *>(
+                                data_wrapper->nodes[neighbor]),
+                            _MM_HINT_T0);
+                    }
+                    valid_mask &= (valid_mask - 1);
+                }
+            }
+        }
+
+        for (; current_scan_idx < sorted_end_idx; ++current_scan_idx) {
+            const unsigned neighbor = neighbors_ptr[current_scan_idx];
+
+            if (neighbor > right_u) {
+                break;
+            }
+
+            if (!skip_range_envelope) {
+                if (!((ll_ptr[current_scan_idx] <= left_u &&
+                       left_u <= lu_ptr[current_scan_idx]) &&
+                      (rl_ptr[current_scan_idx] <= right_u &&
+                       right_u <= ru_ptr[current_scan_idx]))) {
+                    continue;
+                }
+            }
+
+            if (visited_array[neighbor] == visited_array_tag) {
+                continue;
+            }
+            fetched_nns.push_back(neighbor);
+            _mm_prefetch(
+                reinterpret_cast<const char *>(
+                    data_wrapper->nodes[neighbor]),
+                _MM_HINT_T0);
+        }
+
+        if (is_dynamic_ && reverse_count > 0) {
+            const size_t slack_end_idx = sorted_end_idx + reverse_count;
+            for (size_t slack_idx = sorted_end_idx;
+                 slack_idx < slack_end_idx;
+                 ++slack_idx) {
+                const unsigned neighbor = neighbors_ptr[slack_idx];
+
+                if (neighbor < left_u || neighbor > right_u) {
+                    continue;
+                }
+
+                if (!skip_range_envelope) {
+                    if (!((ll_ptr[slack_idx] <= left_u &&
+                           left_u <= lu_ptr[slack_idx]) &&
+                          (rl_ptr[slack_idx] <= right_u &&
+                           right_u <= ru_ptr[slack_idx]))) {
+                        continue;
+                    }
+                }
+
+                if (visited_array[neighbor] == visited_array_tag) {
+                    continue;
+                }
+                fetched_nns.push_back(neighbor);
+                _mm_prefetch(
+                    reinterpret_cast<const char *>(
+                        data_wrapper->nodes[neighbor]),
+                    _MM_HINT_T0);
+            }
+        }
+
+        for (const auto neighbor : fetched_nns) {
+            visited_array[neighbor] = visited_array_tag;
+
+            const DistType nbr_dist = timed_distance(neighbor);
+
+            bool admit_for_navigation = false;
+
+            if (exploration_top.size() < search_ef) {
+                admit_for_navigation = true;
+            } else if (nbr_dist < exploration_top.top().first) {
+                admit_for_navigation = true;
+            }
+
+            if (!admit_for_navigation) {
+                continue;
+            }
+
+            candidate_set.emplace(nbr_dist, neighbor);
+            exploration_top.emplace(nbr_dist, neighbor);
+
+            if (exploration_top.size() > search_ef) {
+                exploration_top.pop();
+            }
+
+            try_add_result(neighbor, nbr_dist);
+        }
+    }
+
+    visited_list_pool_->releaseVisitedList(vl);
+
+    returned_nns.clear();
+    returned_nns.reserve(result_top.size());
+
+    while (!result_top.empty()) {
+        returned_nns.emplace_back(result_top.top().second);
+        result_top.pop();
+    }
+
+    std::reverse(returned_nns.begin(), returned_nns.end());
+
+    last_hop_count_ = hop_counter;
+    last_distance_eval_count_ = distance_eval_count;
+}
+
+void DynamicSegmentGraph::rangeSearchMultiExact(const float *query,
+                                               const MultiRangeQuery &filter) {
+    returned_nns.clear();
+    last_hop_count_ = 0;
+    last_distance_eval_count_ = 0;
+
+    if (data_wrapper == nullptr || !data_wrapper->hasAttributes()) {
+        return;
+    }
+
+    std::vector<std::pair<DistType, unsigned>> candidates;
+    candidates.reserve(static_cast<std::size_t>(data_wrapper->data_size));
+
+    for (unsigned label = 0; label < static_cast<unsigned>(data_wrapper->data_size); ++label) {
+        if (!data_wrapper->passFilter(label, filter)) {
+            continue;
+        }
+
+        const DistType dist = dist_func_(query, data_wrapper->nodes[label], dist_func_param_);
+        ++last_distance_eval_count_;
+        candidates.emplace_back(dist, label);
+    }
+
+    std::sort(candidates.begin(), candidates.end(),
+              [](const auto &a, const auto &b) {
+                  if (a.first == b.first) {
+                      return a.second < b.second;
+                  }
+                  return a.first < b.first;
+              });
+
+    const std::size_t limit = std::min<std::size_t>(query_topK, candidates.size());
+    for (std::size_t i = 0; i < limit; ++i) {
+        returned_nns.push_back(candidates[i].second);
+    }
+}
+
+void DynamicSegmentGraph::rangeSearch(
+    const float *query,
+    const MultiRangeQuery &filter) {
+
+    returned_nns.clear();
+    last_hop_count_ = 0;
+    last_distance_eval_count_ = 0;
+
+    if (data_wrapper == nullptr || !data_wrapper->hasAttributes()) {
+        return;
+    }
+    if (filter.primary_attr >= filter.bounds.size()) {
+        return;
+    }
+
+    const auto &primary_value_bound =
+        filter.bounds[filter.primary_attr];
+
+    const auto primary_rank_bound =
+        data_wrapper->valueRangeToRankRange(
+            filter.primary_attr,
+            primary_value_bound.low,
+            primary_value_bound.high);
+
+    if (primary_rank_bound.first > primary_rank_bound.second) {
+        return;
+    }
+
+    const unsigned left_rank = primary_rank_bound.first;
+    const unsigned right_rank = primary_rank_bound.second;
+
+    // Convert every attribute filter to rank space once per query.
+    std::vector<RangeBound> query_rank_bounds(filter.bounds.size());
+    double non_primary_selectivity = 1.0;
+
+    for (unsigned a = 0; a < filter.bounds.size(); ++a) {
+        const auto rank_bound =
+            data_wrapper->valueRangeToRankRange(
+                a,
+                filter.bounds[a].low,
+                filter.bounds[a].high);
+
+        if (rank_bound.first > rank_bound.second) {
+            return;
+        }
+
+        query_rank_bounds[a] = RangeBound{
+            static_cast<float>(rank_bound.first),
+            static_cast<float>(rank_bound.second)};
+
+        if (a != filter.primary_attr) {
+            const double span =
+                static_cast<double>(
+                    rank_bound.second - rank_bound.first + 1);
+            non_primary_selectivity *=
+                span / static_cast<double>(data_wrapper->data_size);
+        }
+    }
+
+    // Strict loose-MBR is useful for selective filters, but can disconnect
+    // the graph for broad filters. Broad queries retain bridge nodes.
+    constexpr double kLooseMbrSelectivityThreshold = -1.0;
+    const bool use_loose_mbr =
+        non_primary_selectivity > kLooseMbrSelectivityThreshold;
+
+    hnswlib::VisitedList *vl =
+        visited_list_pool_->getFreeVisitedList();
+    hnswlib::vl_type *visited = vl->mass;
+    const hnswlib::vl_type visited_tag = vl->curV;
+
+    auto min_cmp = [](const Candidate &a, const Candidate &b) {
+        return a.first > b.first;
+    };
+
+    std::priority_queue<
+        Candidate,
+        std::vector<Candidate>,
+        decltype(min_cmp)> candidate_set(min_cmp);
+
+    std::priority_queue<Candidate> search_top;
+
+    std::vector<std::pair<DistType, unsigned>> valid_candidates;
+    std::vector<uint8_t> collected(
+        static_cast<std::size_t>(data_wrapper->data_size), 0);
+
+    std::size_t hop_count = 0;
+    std::size_t distance_count = 0;
+
+    auto distance_to = [&](unsigned label) {
+        ++distance_count;
+        return dist_func_(
+            query,
+            data_wrapper->nodes[label],
+            dist_func_param_);
+    };
+
+    auto collect_if_valid = [&](unsigned label, DistType dist) {
+        if (collected[label]) {
+            return;
+        }
+        collected[label] = 1;
+
+        if (data_wrapper->passFilter(label, filter)) {
+            valid_candidates.emplace_back(dist, label);
+        }
+    };
+
+    auto enqueue_label = [&](unsigned label) {
+        if (!isInsertedLabel(label)) {
+            return false;
+        }
+        if (visited[label] == visited_tag) {
+            return false;
+        }
+
+        const unsigned rank =
+            data_wrapper->rankOf(filter.primary_attr, label);
+
+        if (rank < left_rank || rank > right_rank) {
+            return false;
+        }
+
+        visited[label] = visited_tag;
+        const DistType dist = distance_to(label);
+
+        candidate_set.emplace(dist, label);
+        search_top.emplace(dist, label);
+        collect_if_valid(label, dist);
+        return true;
+    };
+
+    const auto &rank_order =
+        data_wrapper->rank_to_label_by_attr[filter.primary_attr];
+
+    const unsigned range_span = right_rank - left_rank + 1;
+
+    const unsigned seed_ranks[] = {
+        left_rank,
+        left_rank + range_span / 2,
+        left_rank + range_span / 4,
+        left_rank + (3 * range_span) / 4,
+        right_rank
+    };
+
+    for (unsigned rank : seed_ranks) {
+        if (rank < rank_order.size()) {
+            enqueue_label(rank_order[rank]);
+        }
+    }
+
+    if (candidate_set.empty()) {
+        for (unsigned rank = left_rank;
+             rank <= right_rank && rank < rank_order.size();
+             ++rank) {
+            if (enqueue_label(rank_order[rank])) {
+                break;
+            }
+        }
+    }
+
+    if (candidate_set.empty()) {
+        visited_list_pool_->releaseVisitedList(vl);
+        return;
+    }
+
+    const std::size_t ef_limit =
+        std::max<std::size_t>(search_ef, query_topK);
+
+    DistType worst_dist =
+        search_top.empty()
+            ? std::numeric_limits<DistType>::max()
+            : search_top.top().first;
+
+    while (!candidate_set.empty()) {
+        const auto [current_dist, current_label] =
+            candidate_set.top();
+        candidate_set.pop();
+        ++hop_count;
+
+        if (search_top.size() >= ef_limit &&
+            current_dist > worst_dist) {
+            break;
+        }
+
+        if (current_label >= label_to_row_.size()) {
+            continue;
+        }
+
+        const int32_t row_value =
+            label_to_row_[current_label];
+
+        if (row_value < 0) {
+            continue;
+        }
+
+        const std::size_t row =
+            static_cast<std::size_t>(row_value);
+        const std::size_t start = row_offset_[row];
+
+        const auto &degree = node_degrees_[row];
+        const std::size_t total_edges =
+            static_cast<std::size_t>(degree.fwd) +
+            static_cast<std::size_t>(degree.rev);
+
+        for (std::size_t i = 0; i < total_edges; ++i) {
+            const std::size_t edge_idx = start + i;
+            const unsigned neighbor = neighbors_[edge_idx];
+
+            if (neighbor >=
+                static_cast<unsigned>(data_wrapper->data_size)) {
+                continue;
+            }
+
+            const unsigned neighbor_rank =
+                data_wrapper->rankOf(
+                    filter.primary_attr, neighbor);
+
+            if (neighbor_rank < left_rank ||
+                neighbor_rank > right_rank) {
+                continue;
+            }
+
+            // For selective queries, apply the non-primary loose MBR.
+            // For broad queries, keep non-matching nodes as graph bridges.
+            bool loose_mbr_active = true;
+            if (use_loose_mbr) {
+                for (unsigned a = 0; a < filter.bounds.size(); ++a) {
+                    if (a == filter.primary_attr) {
+                        continue;
+                    }
+
+                    const unsigned neighbor_attr_rank =
+                        data_wrapper->rankOf(a, neighbor);
+                    const auto &query_rank_bound =
+                        query_rank_bounds[a];
+
+                    if (neighbor_attr_rank < query_rank_bound.low ||
+                        neighbor_attr_rank > query_rank_bound.high) {
+                        loose_mbr_active = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!loose_mbr_active) {
+                continue;
+            }
+
+            // Existing DSG envelope remains the exact primary-attribute
+            // edge condition.
+            if (!((left_lower_[edge_idx] <= left_rank &&
+                   left_rank <= left_upper_[edge_idx]) &&
+                  (right_lower_[edge_idx] <= right_rank &&
+                   right_rank <= right_upper_[edge_idx]))) {
+                continue;
+            }
+
+            if (visited[neighbor] == visited_tag) {
+                continue;
+            }
+
+            visited[neighbor] = visited_tag;
+            const DistType neighbor_dist =
+                distance_to(neighbor);
+
+            collect_if_valid(neighbor, neighbor_dist);
+
+            if (search_top.size() < ef_limit ||
+                neighbor_dist < worst_dist) {
+                candidate_set.emplace(
+                    neighbor_dist, neighbor);
+                search_top.emplace(
+                    neighbor_dist, neighbor);
+
+                if (search_top.size() > ef_limit) {
+                    search_top.pop();
+                }
+
+                worst_dist = search_top.top().first;
+            }
+        }
+    }
+
+    visited_list_pool_->releaseVisitedList(vl);
+
+    std::sort(
+        valid_candidates.begin(),
+        valid_candidates.end(),
+        [](const auto &a, const auto &b) {
+            if (a.first == b.first) {
+                return a.second < b.second;
+            }
+            return a.first < b.first;
+        });
+
+    const std::size_t result_count =
+        std::min<std::size_t>(
+            query_topK, valid_candidates.size());
+
+    returned_nns.reserve(result_count);
+    for (std::size_t i = 0; i < result_count; ++i) {
+        returned_nns.push_back(
+            valid_candidates[i].second);
+    }
+
+    last_hop_count_ = hop_count;
+    last_distance_eval_count_ = distance_count;
+}
+
+
+
+
+
+
+
+
 
 void DynamicSegmentGraph::insertionInnerSearch(const float *query,
                                               const std::pair<int, int> query_bound,
@@ -1004,7 +1791,7 @@ void DynamicSegmentGraph::insertionInnerSearch(const float *query,
                 int fail_mask = _mm_movemask_ps(_mm_castsi128_ps(any_fail));
                 int valid_mask = (~fail_mask) & 0xF;
                 while (valid_mask) {
-                    int bit = CountTrailingZeros(static_cast<unsigned int>(valid_mask));
+                    int bit = __builtin_ctz(valid_mask);
                     unsigned neighbor = neighbors_ptr[current_scan_idx + bit];
                     if (visited_array[neighbor] != visited_array_tag) {
                         fetched_nns.push_back(neighbor);
@@ -1026,6 +1813,11 @@ void DynamicSegmentGraph::insertionInnerSearch(const float *query,
                     continue;
                 }
             }
+
+
+
+
+
             if (visited_array[neighbor] == visited_array_tag) {
                 continue;
             }
@@ -1415,7 +2207,11 @@ void DynamicSegmentGraph::insert(unsigned label) {
     left_upper_.resize(new_total_size);
     right_lower_.resize(new_total_size);
     right_upper_.resize(new_total_size);
-    
+
+
+    resizeMbrStorage(new_total_size);
+
+
     // Write edges
     for (size_t i = 0; i < count; ++i) {
         neighbors_[start_offset + i] = kept_edges[i].external_id;
@@ -1423,6 +2219,17 @@ void DynamicSegmentGraph::insert(unsigned label) {
         left_upper_[start_offset + i] = kept_edges[i].left_upper;
         right_lower_[start_offset + i] = kept_edges[i].right_lower;
         right_upper_[start_offset + i] = kept_edges[i].right_upper;
+
+
+        fillLooseMbrForEdge(start_offset + i,
+            kept_edges[i].external_id,
+            data_wrapper->primary_attr_id,
+            kept_edges[i].left_lower,
+            kept_edges[i].left_upper,
+            kept_edges[i].right_lower,
+            kept_edges[i].right_upper);
+
+
     }
     
     // Update metadata
@@ -1501,6 +2308,18 @@ void DynamicSegmentGraph::addReverseEdge(unsigned src, unsigned dst, unsigned ll
     left_upper_[insert_idx] = lu;
     right_lower_[insert_idx] = rl;
     right_upper_[insert_idx] = ru;
+
+
+
+    fillLooseMbrForEdge(insert_idx,
+        dst,
+        data_wrapper->primary_attr_id,
+        ll,
+        lu,
+        rl,
+        ru);
+
+
     deg.rev = static_cast<uint16_t>(rev + 1);
 
     auto t_total_end = Clock::now();
@@ -1599,6 +2418,19 @@ void DynamicSegmentGraph::recompress(unsigned label) {
         left_upper_[start + i] = final_edges[i].left_upper;
         right_lower_[start + i] = final_edges[i].right_lower;
         right_upper_[start + i] = final_edges[i].right_upper;
+
+
+
+        fillLooseMbrForEdge(start + i,
+            final_edges[i].external_id,
+            data_wrapper->primary_attr_id,
+            final_edges[i].left_lower,
+            final_edges[i].left_upper,
+            final_edges[i].right_lower,
+            final_edges[i].right_upper);
+
+
+
     }
     
     // Update counts: keep the recompressed edges as forward and clear accumulated reverse edges.

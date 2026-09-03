@@ -1,0 +1,12 @@
+{
+  "dataset": "SIFT1M-SynAttr-I",
+  "n": 1000000,
+  "dim": 128,
+  "queries": 10000,
+  "attr_count": 4,
+  "seed": 20260707,
+  "selectivities": [
+    0.1,
+    0.01
+  ]
+}

@@ -11,12 +11,6 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <sys/types.h>
-#ifdef _WIN32
-#include <direct.h>
-#endif
-
-using std::cout;
-using std::endl;
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -139,27 +133,6 @@ void ReadNeighborsBinary(const fs::path &file_path,
                 sizeof(int32_t) * header.topk);
     }
 }
-
-void ReadNeighborsIbin(const fs::path &file_path, FlatVectors<int> &groundtruth) {
-    std::ifstream in(file_path, std::ios::binary);
-    if (!in.is_open()) {
-        throw std::runtime_error("Cannot open groundtruth ibin file: " +
-                                 file_path.string());
-    }
-    uint32_t query_count = 0;
-    uint32_t topk = 0;
-    in.read(reinterpret_cast<char *>(&query_count), sizeof(uint32_t));
-    in.read(reinterpret_cast<char *>(&topk), sizeof(uint32_t));
-    if (query_count == 0 || topk == 0) {
-        throw std::runtime_error("Invalid groundtruth ibin header: " +
-                                 file_path.string());
-    }
-    groundtruth.resize(query_count, topk);
-    for (size_t i = 0; i < groundtruth.size(); ++i) {
-        int32_t *row = groundtruth[i];
-        in.read(reinterpret_cast<char *>(row), sizeof(int32_t) * topk);
-    }
-}
 } // namespace
 
 void SynthesizeQuerys(const FlatVectors<float> &nodes,
@@ -193,6 +166,189 @@ void DataWrapper::readData(string &dataset_path, string &query_path) {
     this->data_dim = this->nodes.dim();
 }
 
+
+
+
+void DataWrapper::readAttributes(const std::string &path, unsigned count) {
+    std::ifstream input(path);
+    if (!input.is_open()) {
+        throw std::runtime_error("Cannot open attribute file: " + path);
+    }
+
+    attr_count = count;
+    attrs.assign(count,
+                 std::vector<float>(
+                     static_cast<std::size_t>(data_size)));
+
+    std::string line;
+    std::size_t rows = 0;
+
+    while (std::getline(input, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        std::stringstream stream(line);
+        std::string field;
+        std::vector<std::string> columns;
+
+        while (std::getline(stream, field, ',')) {
+            columns.push_back(field);
+        }
+
+        if (columns.size() < count + 1) {
+            throw std::runtime_error("Malformed attribute row: " + line);
+        }
+
+        const unsigned original_id =
+            static_cast<unsigned>(std::stoul(columns[0]));
+
+        if (original_id >= static_cast<unsigned>(data_size)) {
+            throw std::runtime_error("Attribute ID out of range");
+        }
+
+        for (unsigned attr = 0; attr < count; ++attr) {
+            attrs[attr][original_id] = std::stof(columns[attr + 1]);
+        }
+
+        ++rows;
+    }
+
+    if (rows != static_cast<std::size_t>(data_size)) {
+        throw std::runtime_error(
+            "Attribute row count does not match data size");
+    }
+
+    attr_rank.assign(
+        count,
+        std::vector<unsigned>(
+            static_cast<std::size_t>(data_size)));
+
+    rank_to_original.assign(
+        count,
+        std::vector<unsigned>(
+            static_cast<std::size_t>(data_size)));
+
+    for (unsigned attr = 0; attr < count; ++attr) {
+        std::vector<unsigned> ids(
+            static_cast<std::size_t>(data_size));
+
+        std::iota(ids.begin(), ids.end(), 0U);
+
+        std::stable_sort(
+            ids.begin(),
+            ids.end(),
+            [&](unsigned lhs, unsigned rhs) {
+                if (attrs[attr][lhs] != attrs[attr][rhs]) {
+                    return attrs[attr][lhs] < attrs[attr][rhs];
+                }
+                return lhs < rhs;
+            });
+
+        for (unsigned rank = 0; rank < ids.size(); ++rank) {
+            const unsigned original_id = ids[rank];
+
+            rank_to_original[attr][rank] = original_id;
+
+            attr_rank[attr][original_id] = rank;
+        }
+    }
+}
+
+std::pair<unsigned, unsigned>
+DataWrapper::valueRangeToRankRange(unsigned attr,
+                                   float low,
+                                   float high) const {
+    if (attr >= attr_count || low > high) {
+        return {1U, 0U};
+    }
+
+    const auto &order = rank_to_original[attr];
+
+    const auto lower = std::lower_bound(
+        order.begin(),
+        order.end(),
+        low,
+        [&](unsigned original_id, float value) {
+            return attrs[attr][original_id] < value;
+        });
+
+    const auto upper = std::upper_bound(
+        order.begin(),
+        order.end(),
+        high,
+        [&](float value, unsigned original_id) {
+            return value < attrs[attr][original_id];
+        });
+
+    if (lower == upper) {
+        return {1U, 0U};
+    }
+
+    return {
+        static_cast<unsigned>(lower - order.begin()),
+        static_cast<unsigned>(upper - order.begin() - 1)
+    };
+}
+
+bool DataWrapper::passFilter(unsigned original_id,
+                             const MultiRangeQuery &query) const {
+    if (original_id >= static_cast<unsigned>(data_size)) {
+        return false;
+    }
+
+    if (query.bounds.size() != attr_count) {
+        return false;
+    }
+
+    for (unsigned attr = 0; attr < attr_count; ++attr) {
+        const float value = attrs[attr][original_id];
+
+        if (value < query.bounds[attr].low ||
+            value > query.bounds[attr].high) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+unsigned DataWrapper::chooseNavigationAttribute(
+    const MultiRangeQuery &query) const {
+    if (query.bounds.size() != attr_count) {
+        throw std::runtime_error("Query attribute count mismatch");
+    }
+
+    unsigned best_attr = 0;
+    std::size_t best_span =
+        static_cast<std::size_t>(data_size) + 1;
+
+    for (unsigned attr = 0; attr < attr_count; ++attr) {
+        const auto rank_range = valueRangeToRankRange(
+            attr,
+            query.bounds[attr].low,
+            query.bounds[attr].high);
+
+        if (rank_range.first > rank_range.second) {
+            return attr;
+        }
+
+        const std::size_t span = static_cast<std::size_t>(
+            rank_range.second - rank_range.first + 1);
+
+        if (span < best_span) {
+            best_span = span;
+            best_attr = attr;
+        }
+    }
+
+    return best_attr;
+}
+
+
+
+
+
 void SaveToCSVRow(const string &path, const int idx, const int l_bound, const int r_bound, const int pos_range, const int real_search_key_range, const int K_neighbor, const double &search_time, const vector<int> &gt) {
     std::ofstream file;
     file.open(path, std::ios_base::app);
@@ -212,17 +368,6 @@ void DataWrapper::LoadGroundtruth(const string &gt_root) {
     using std::cout;
     using std::endl;
     fs::path base = gt_root.empty() ? fs::path("./groundtruth/static") : fs::path(gt_root);
-    if (fs::exists(base) && fs::is_regular_file(base) && base.extension() == ".ibin") {
-        ReadNeighborsIbin(base, static_groundtruth[0]);
-        static_query_ranges[0].assign(static_groundtruth[0].size(),
-                                      {0, std::max(this->data_size - 1, 0)});
-        for (size_t range_id = 1; range_id < kStaticRangeCount; ++range_id) {
-            static_query_ranges[range_id].clear();
-            static_groundtruth[range_id].clear();
-        }
-        cout << "Loaded groundtruth from ibin: " << base << endl;
-        return;
-    }
     fs::path dataset_dir = base;
     const fs::path dataset_candidate = base / this->dataset;
     if (fs::exists(dataset_candidate) && fs::is_directory(dataset_candidate)) {
@@ -339,11 +484,7 @@ void DataWrapper::generateIncrementalInsertionGroundtruth(
     // Create the save_dir if it does not exist
     struct stat info;
     if (stat(save_dir.c_str(), &info) != 0) {
-#ifdef _WIN32
-        if (_mkdir(save_dir.c_str()) != 0) {
-#else
         if (mkdir(save_dir.c_str(), 0777) != 0) {
-#endif
             throw std::runtime_error("Failed to create directory: " + save_dir);
         }
     } else if (!(info.st_mode & S_IFDIR)) {

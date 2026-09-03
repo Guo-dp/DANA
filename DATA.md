@@ -25,9 +25,19 @@ uint32 count
 uint32[count] rank_to_original
 ```
 
-## Public Data
+## Paper Workload Definitions
 
-Paper experiments use public vector datasets plus generated scalar attributes and filters. Raw public vectors are not redistributed. Place matching 96D DEEP base/query files under `data/deep/` and verify dimensions before L2 search.
+`workloads/` contains compact generated filters and JSON manifests for DEEP, SIFT, App-Reviews, and synthetic experiments. The original vectors, generated attribute tables, reordered vector copies, and indexes are not included.
+
+The checked-in manifests record seeds, dimensions, query counts, attribute counts, and selectivity profiles where available. Filters are deterministic experiment inputs and can be paired with regenerated attributes using the corresponding preparation scripts.
+
+## Public Dataset Inputs
+
+- DEEP: use dimension-matched 96D base/query files. The main artifact uses the first 1M or all 10M base vectors and public 10K queries.
+- SIFT1M: 128D vectors with generated independent scalar attributes.
+- BigVectorBench App-Reviews: 277,936 training vectors, 10,000 test vectors, 384 dimensions, and three integer labels.
+
+Validate DEEP dimensions before running L2 search:
 
 ```bash
 python3 - <<'PY'
@@ -41,4 +51,4 @@ for name in ("base.10M.fbin", "query.public.10K.fbin"):
 PY
 ```
 
-Do not commit raw public datasets, reordered vectors, `.dsg`, or `.hnsw` files to ordinary Git history. They are large reproducible artifacts. Third-party datasets remain governed by their original terms.
+Do not commit public vectors, reordered `base.attr*.fbin` files, `.dsg`, or `.hnsw` indexes to ordinary Git history. They are large reproducible artifacts and third-party data remains governed by its source license.

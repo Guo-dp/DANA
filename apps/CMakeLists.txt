@@ -14,11 +14,8 @@ endfunction()
 add_dsg_app(generate_groundtruth_static static/generate_groundtruth_static.cc)
 add_dsg_app(build_static_index static/build_static_index.cc)
 add_dsg_app(query_static_index static/query_static_index.cc)
-if(EXISTS "${PROJECT_SOURCE_DIR}/include/utils/filter_query.h")
-    add_dsg_app(query_multi_filter_benchmark static/query_multi_filter_benchmark.cc)
-else()
-    message(STATUS "Skipping incomplete query_multi_filter_benchmark target.")
-endif()
+add_dsg_app(query_multi_filter_benchmark static/query_multi_filter_benchmark.cc)
+add_dsg_app(query_multi_dsg_benchmark static/query_multi_dsg_benchmark.cc)
 
 add_dsg_app(build_dynamic_index dynamic/build_dynamic_index.cc)
 add_dsg_app(insert_and_query_dynamic_index dynamic/insert_and_query_dynamic_index.cc)
@@ -29,3 +26,17 @@ if(DSG_BUILD_INDEX_DEBUG)
     target_compile_options(build_static_index_debug PRIVATE -O0 -g)
 endif()
 
+add_dsg_app(build_hnsw_index
+            static/build_hnsw_index.cc)
+
+add_dsg_app(query_hnsw_postfilter_benchmark
+            static/query_hnsw_postfilter_benchmark.cc)
+
+add_dsg_app(query_hnsw_insearch_benchmark
+            static/query_hnsw_insearch_benchmark.cc)
+
+add_dsg_app(update_and_query_multi_dsg
+            dynamic/update_and_query_multi_dsg.cc)
+
+add_dsg_app(query_rebuilt_multi_dsg
+            dynamic/query_rebuilt_multi_dsg.cc)

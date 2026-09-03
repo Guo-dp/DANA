@@ -11,24 +11,24 @@ float EuclideanDistance(const float *lhs, const float *rhs, size_t dim) {
 
 // t1:begin, t2:end
 void AccumulateTime(timeval &t1, timeval &t2, double &val_time) {
-    const std::chrono::duration<double> diff = t2 - t1;
-    val_time += diff.count();
+    val_time += (t2.tv_sec - t1.tv_sec + (t2.tv_usec - t1.tv_usec) * 1.0 / CLOCKS_PER_SEC);
 }
 
 void CountTime(timeval &t1, timeval &t2, double &val_time) {
-    const std::chrono::duration<double> diff = t2 - t1;
-    val_time = diff.count();
+    val_time = 0;
+    val_time += (t2.tv_sec - t1.tv_sec + (t2.tv_usec - t1.tv_usec) * 1.0 / CLOCKS_PER_SEC);
 }
 
 double CountTime(timeval &t1, timeval &t2) {
-    const std::chrono::duration<double> diff = t2 - t1;
-    return diff.count();
+    double val_time = 0.0;
+    val_time += (t2.tv_sec - t1.tv_sec + (t2.tv_usec - t1.tv_usec) * 1.0 / CLOCKS_PER_SEC);
+    return val_time;
 }
 
 void logTime(timeval &begin, timeval &end, const string &log) {
     gettimeofday(&end, NULL);
-    const std::chrono::duration<double> diff = end - begin;
-    fprintf(stdout, ("# " + log + ": %.7fs\n").c_str(), diff.count());
+    fprintf(stdout, ("# " + log + ": %.7fs\n").c_str(),
+            end.tv_sec - begin.tv_sec + (end.tv_usec - begin.tv_usec) * 1.0 / CLOCKS_PER_SEC);
 };
 
 double countRecall(const vector<int> &truth, const vector<int> &pred) {

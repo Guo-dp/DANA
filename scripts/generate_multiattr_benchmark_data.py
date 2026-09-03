@@ -12,10 +12,9 @@ from pathlib import Path
 
 
 PROFILES = (
-    ("narrow", 0.10, 0.15, 0.15),
-    ("medium", 0.25, 0.25, 0.25),
-    ("mixed", 0.32, 0.20, 0.50),
-    ("broad", 1.00, 0.80, 0.80),
+    ("attr0_narrow", 0.10, 0.50, 0.50),
+    ("attr1_narrow", 0.50, 0.10, 0.50),
+    ("attr2_narrow", 0.50, 0.50, 0.10),
 )
 
 
@@ -27,6 +26,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--queries", type=int, default=100)
     parser.add_argument("--topk", type=int, default=10)
     parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument(
+        "--skip-expected",
+        action="store_true",
+        help="Skip slow Python exact Top-K generation.",
+    )
     return parser.parse_args()
 
 
@@ -106,18 +110,25 @@ def main() -> None:
             centered_range(attr2, ratio2, args.size),
         )
 
-        candidates: list[tuple[float, int]] = []
-        for label, value0, value1, value2 in attrs:
-            if not (
-                bounds[0][0] <= value0 <= bounds[0][1]
-                and bounds[1][0] <= value1 <= bounds[1][1]
-                and bounds[2][0] <= value2 <= bounds[2][1]
-            ):
-                continue
-            candidates.append((squared_l2(query, base[label]), label))
+        expected = ""
+        if not args.skip_expected:
+            candidates: list[tuple[float, int]] = []
+            for label, value0, value1, value2 in attrs:
+                if not (
+                    bounds[0][0] <= value0 <= bounds[0][1]
+                    and bounds[1][0] <= value1 <= bounds[1][1]
+                    and bounds[2][0] <= value2 <= bounds[2][1]
+                ):
+                    continue
+                candidates.append(
+                    (squared_l2(query, base[label]), label)
+                )
 
-        candidates.sort()
-        expected = " ".join(str(label) for _, label in candidates[: args.topk])
+            candidates.sort()
+            expected = " ".join(
+                str(label)
+                for _, label in candidates[: args.topk]
+            )
         filter_rows.append(
             [
                 query_idx,

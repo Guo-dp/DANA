@@ -48,7 +48,10 @@ endfunction()
 
 add_subdirectory(src/utils)
 
-add_library(dsg_core STATIC src/dsg.cc)
+add_library(dsg_core STATIC
+    src/dsg.cc
+    src/dynamic_multi_dsg.cc
+)
 target_include_directories(dsg_core PRIVATE
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/include/utils
