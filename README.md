@@ -1,17 +1,17 @@
-# Multi-DSG
+# DANA
 
-Multi-DSG extends one-dimensional Dynamic Segment Graphs to conjunctive multi-attribute range-filtered approximate nearest-neighbor search. It keeps one valid 1-D DSG per indexed scalar attribute, chooses one indexed attribute for navigation, admits only points satisfying every predicate into the result heap, and preserves non-matching points as bridge nodes. Dynamic changes use a Base/Delta/Tombstone layer with snapshot rebuilds.
+DANA extends one-dimensional Dynamic Segment Graphs to conjunctive multi-attribute range-filtered approximate nearest-neighbor search. It keeps one valid 1-D DSG per indexed scalar attribute, chooses one indexed attribute for navigation, admits only points satisfying every predicate into the result heap, and preserves non-matching points as bridge nodes. Dynamic changes use a Base/Delta/Tombstone layer with snapshot rebuilds.
 
 This repository is the synchronized artifact snapshot used by the experiments. It contains the final C++ source, workload generators, benchmark drivers, compact workload definitions, validation datasets, and the complete raw log archive. Public vectors and generated indexes are intentionally excluded because they are large and redistributability varies.
 
 ## Method Boundary
 
-Multi-DSG is an engineering extension built from multiple legal one-dimensional DSG indexes. It is not a lossless multidimensional generalization of DSG edge labels. Conjunctive filtering is implemented by navigation-attribute selection plus in-search result admission.
+DANA is an engineering extension built from multiple legal one-dimensional DSG indexes. It is not a lossless multidimensional generalization of DSG edge labels. Conjunctive filtering is implemented by navigation-attribute selection plus in-search result admission.
 
 ## Repository Layout
 
-- `include/`, `src/`: DSG and dynamic Multi-DSG implementation.
-- `apps/static/`: index builders and static Multi-DSG/HNSW benchmarks.
+- `include/`, `src/`: DSG and dynamic DANA implementation.
+- `apps/static/`: index builders and static DANA/HNSW benchmarks.
 - `apps/dynamic/`: update, snapshot, rebuild-query, and dynamic-index programs.
 - `scripts/`: workload preparation, experiment runners, and summarizers.
 - `data/`: small deterministic validation workloads only.
@@ -42,7 +42,7 @@ The deterministic vector sanity test verifies squared-L2 distances, filtering, t
 - DEEP-1M and DEEP-10M, 96 dimensions, synthetic independent scalar attributes.
 - SIFT1M, 128 dimensions, four to six generated attributes.
 - BigVectorBench App-Reviews, 277,936 vectors, 384 dimensions, three real labels.
-- Static Multi-DSG, HNSW post-filter, HNSW in-search, prefilter/hybrid, routing ablations, attribute scaling, and dynamic rebuild experiments.
+- Static DANA, HNSW post-filter, HNSW in-search, prefilter/hybrid, routing ablations, attribute scaling, and dynamic rebuild experiments.
 
 Raw timing logs include the original machine conditions. For shared-server timing claims, use the clean-repeat logs and report the number of repetitions; do not mix known load-anomaly logs with clean measurements.
 

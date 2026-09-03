@@ -5,10 +5,10 @@ set -Eeuo pipefail
 #
 # Stages:
 #   build_hnsw       build HNSW M16 if missing
-#   dsg_high_ef      run Multi-DSG high-ef extension
+#   dsg_high_ef      run DANA high-ef extension
 #   hnsw_post        run HNSW post-filter high candidate curve
 #   hnsw_insearch    run HNSW in-search high-ef curve
-#   indexed_attrs    run Multi-DSG indexed-attribute ablation
+#   indexed_attrs    run DANA indexed-attribute ablation
 #   summarize        summarize completed logs
 #   all              run all stages
 
@@ -80,10 +80,10 @@ if run_stage dsg_high_ef; then
   for ef in 6144 8192; do
     log="$LOG_ROOT/query/dsg_ef${ef}.log"
     if [[ -s "$log" ]] && grep -q '^all' "$log"; then
-      echo "[skip] Multi-DSG ef=$ef"
+      echo "[skip] DANA ef=$ef"
       continue
     fi
-    echo "===== BigVectorBench Multi-DSG ef=$ef ====="
+    echo "===== BigVectorBench DANA ef=$ef ====="
     ./build/apps/query_multi_dsg_benchmark \
       -dataset bigvectorbench_app_reviews \
       -N "$N" \
@@ -186,7 +186,7 @@ if run_stage indexed_attrs; then
 fi
 
 if run_stage summarize; then
-  echo "===== Multi-DSG ====="
+  echo "===== DANA ====="
   for ef in 128 256 512 768 1024 1536 2048 3072 4096 6144 8192; do
     log="$LOG_ROOT/query/dsg_ef${ef}.log"
     [[ -s "$log" ]] || continue

@@ -246,7 +246,7 @@ def baseline_manifest(attr_count: int) -> dict[str, object]:
                 "multi_attribute_rule": "conjunctive predicate in predicate-aware search",
                 "implementation": "external; workload generated only",
             },
-            "Multi-DSG": {
+            "DANA": {
                 "workloads": ["static", "ordered", "unordered"],
                 "multi_attribute_rule": (
                     f"{attr_count} one-dimensional DSG indexes, adaptive navigation"

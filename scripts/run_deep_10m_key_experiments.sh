@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Run the final DEEP-10M-96D key comparison in resumable stages.
-# This script targets the server branch containing the Multi-DSG and HNSW
+# This script targets the server branch containing the DANA and HNSW
 # benchmark executables added during the multi-attribute experiments.
 
 ROOT_DIR="${ROOT_DIR:-$(pwd)}"
@@ -186,10 +186,10 @@ if run_stage query_dsg; then
   for ef in 768 1024 1536; do
     log="$LOG_ROOT/query/multi_dsg/ef${ef}.log"
     if [[ -s "$log" ]] && grep -q '^all' "$log"; then
-      echo "[skip] completed Multi-DSG ef=$ef"
+      echo "[skip] completed DANA ef=$ef"
       continue
     fi
-    echo "===== Multi-DSG ef=$ef ====="
+    echo "===== DANA ef=$ef ====="
     ./build/apps/query_multi_dsg_benchmark \
       -dataset deep_10m_96d \
       -N "$N" \

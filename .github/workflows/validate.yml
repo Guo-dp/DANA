@@ -40,7 +40,7 @@ jobs:
               -index_path index/static/vector_calc_sanity/multi_dsg/attr${attr}.dsg \
               -k 4 -ef_construction 8 -ef_max 8 -alpha 1.0
           done
-      - name: Run integrated Multi-DSG smoke test
+      - name: Run integrated DANA smoke test
         run: |
           ./build/apps/query_multi_dsg_benchmark \
             -dataset vector_calc_sanity \

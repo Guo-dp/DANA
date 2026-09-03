@@ -5,10 +5,10 @@ set -Eeuo pipefail
 #
 # Stages:
 #   repeat_summary      summarize completed low-load repeat logs with std/p95
-#   indexed_attrs       run Multi-DSG with 1/2/3 indexed attributes
+#   indexed_attrs       run DANA with 1/2/3 indexed attributes
 #   selectivity_filters generate tiny/small/medium/narrow/broad filters
 #   prefilter           run Prefiltering on selectivity filters
-#   dsg_selectivity     run Multi-DSG on selectivity filters
+#   dsg_selectivity     run DANA on selectivity filters
 #   hybrid_summary      estimate Hybrid thresholds from completed logs
 #   all                 run all stages in the order above
 
@@ -148,7 +148,7 @@ if run_stage dsg_selectivity; then
   mkdir -p "$LOG_ROOT/prefilter_hybrid"
   log="$LOG_ROOT/prefilter_hybrid/multi_dsg_selectivity_ef${SEARCH_EF}.log"
   if [[ -s "$log" ]] && grep -q '^all' "$log"; then
-    echo "[skip] completed Multi-DSG selectivity"
+    echo "[skip] completed DANA selectivity"
   else
     ./build/apps/query_multi_dsg_benchmark \
       -dataset deep_10m_96d \

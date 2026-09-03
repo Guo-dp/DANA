@@ -93,7 +93,7 @@ public:
                      const std::pair<int, int> query_bound) override;
 
     /**
-     * Multi-DSG query.
+     * DANA query.
      *
      * Graph labels are ranks under navigation_attr.
      * rank_to_original converts graph rank to original data ID.

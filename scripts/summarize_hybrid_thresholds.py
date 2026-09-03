@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Estimate hybrid Prefiltering/Multi-DSG latency from completed logs."""
+"""Estimate hybrid Prefiltering/DANA latency from completed logs."""
 
 from __future__ import annotations
 

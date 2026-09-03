@@ -25,7 +25,7 @@ guodp@172.18.51.166:/data/guodp/snap/VD/DRFA/Dynamic-Range-Filtering-ANNS-releas
 
 ## Integrity
 
-The server-to-local source/log transfer was verified against 567 server-generated SHA-256 entries with zero missing files and zero mismatches before publication. `results/raw_logs_manifest.csv` provides a separate hash for every archived log.
+The server-to-local source/log transfer was verified against 567 server-generated SHA-256 entries with zero missing files and zero mismatches before publication. `SERVER_SYNC_SHA256.txt` records that pre-publication server snapshot; subsequent DANA naming normalization intentionally changes hashes of affected text files. `results/raw_logs_manifest.csv` provides a separate hash for every archived log.
 
 After synchronization, the exact server source completed a fresh Linux Release build of all configured targets. The integrated 8-point, three-attribute query smoke test returned Recall@3 = 1.0000. GitHub Actions repeats the Python/data checks, full C++ build, three small DSG index builds, and integrated query test on Ubuntu.
 

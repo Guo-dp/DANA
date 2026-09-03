@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create paper-ready vector figures for the Multi-DSG paper."""
+"""Create paper-ready vector figures for the DANA paper."""
 
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ def fig_intro_dynamic_framework():
 
     ax.text(0.16, 0.92, "COUPLED FILTERING", ha="center", fontsize=9.2,
             weight="bold", color=COLORS["red"])
-    ax.text(0.68, 0.92, "MULTI-DSG", ha="center", fontsize=9.2,
+    ax.text(0.68, 0.92, "DANA", ha="center", fontsize=9.2,
             weight="bold", color=COLORS["blue"])
     ax.plot([0.31, 0.31], [0.12, 0.88], color="#C7CDD3", linewidth=1.1)
 
@@ -140,7 +140,7 @@ def fig_intro_dynamic_framework():
     ax.plot([0.148, 0.172], [0.292, 0.268], color=COLORS["red"], linewidth=1.7)
     ax.text(0.17, 0.19, "broken path", ha="center", fontsize=8.5, color=COLORS["red"])
 
-    # Multi-DSG separates ordered navigation from full-predicate admission.
+    # DANA separates ordered navigation from full-predicate admission.
     box(ax, (0.35, 0.56), (0.10, 0.12), "Query", "white", COLORS["blue"], fontsize=8.6)
     box(ax, (0.49, 0.56), (0.11, 0.12), "Router", COLORS["blue_light"], COLORS["blue"], fontsize=8.6)
     arrow(ax, (0.45, 0.62), (0.49, 0.62), COLORS["blue"], mutation=10)
@@ -337,7 +337,7 @@ def fig_snapshot_maintenance():
 
 
 def fig_storage_qps_tradeoff():
-    methods = ["HNSW post", "HNSW in", "DSG attr0", "DSG attr1", "Multi-DSG"]
+    methods = ["HNSW post", "HNSW in", "DSG attr0", "DSG attr1", "DANA"]
     storage = np.array([5.0, 5.0, 35.5, 35.5, 106.6])
     dist = np.array([351958.6, 334501.3, 14939.6, 14977.9, 12689.9])
     recall = [0.9993, 0.9992, 0.9983, 0.9968, 0.9993]
@@ -360,7 +360,7 @@ def fig_storage_qps_tradeoff():
     ax.annotate("DSG attr1\n$R$=.9968", (35.5, 14977.9), xytext=(12, 42),
                 textcoords="offset points", ha="left", fontsize=7.7,
                 arrowprops=dict(arrowstyle="-", color=COLORS["blue_mid"], lw=0.8))
-    ax.annotate("Multi-DSG\n$R$=.9993", (106.6, 12689.9), xytext=(-8, 18),
+    ax.annotate("DANA\n$R$=.9993", (106.6, 12689.9), xytext=(-8, 18),
                 textcoords="offset points", ha="right", fontsize=7.7,
                 arrowprops=dict(arrowstyle="-", color=COLORS["blue"], lw=0.8))
     ax.set_xscale("log")
@@ -422,7 +422,7 @@ def fig_attribute_scalability():
 
 
 def fig_bridge_ablation_chart():
-    labels = ["Post-filter\nDSG", "Multi-DSG"]
+    labels = ["Post-filter\nDSG", "DANA"]
     recall = [0.937, 1.000]
     colors = [COLORS["red"], COLORS["green"]]
     fig, ax = plt.subplots(figsize=(3.20, 2.15))
@@ -479,7 +479,7 @@ def fig_dynamic_growth():
 
 def fig_multi_dsg_overview():
     fig, ax = setup_ax((7.4, 3.7))
-    ax.text(0.02, 0.95, "Multi-DSG overview", fontsize=12, weight="bold")
+    ax.text(0.02, 0.95, "DANA overview", fontsize=12, weight="bold")
 
     box(ax, (0.04, 0.58), (0.16, 0.18), "Objects\nvectors + attrs", COLORS["gray_light"])
     box(ax, (0.04, 0.25), (0.16, 0.18), "Query\nq + ranges", COLORS["orange_light"], COLORS["orange"])
@@ -549,9 +549,9 @@ def fig_in_search_filtering():
 
 def fig_dynamic_multi_dsg():
     fig, ax = setup_ax((7.4, 4.0))
-    ax.text(0.02, 0.95, "Dynamic Multi-DSG: Base + Delta + Tombstone + rebuild", fontsize=12, weight="bold")
+    ax.text(0.02, 0.95, "Dynamic DANA: Base + Delta + Tombstone + rebuild", fontsize=12, weight="bold")
 
-    box(ax, (0.06, 0.58), (0.22, 0.17), "Base Multi-DSG\nstatic snapshot", COLORS["blue_light"], COLORS["blue"])
+    box(ax, (0.06, 0.58), (0.22, 0.17), "Base DANA\nstatic snapshot", COLORS["blue_light"], COLORS["blue"])
     box(ax, (0.06, 0.28), (0.22, 0.16), "Tombstone\nmasked base IDs", COLORS["red_light"], COLORS["red"])
     box(ax, (0.36, 0.60), (0.16, 0.13), "Epoch 0\nD0 / T0", COLORS["orange_light"], COLORS["orange"], fontsize=8.2)
     box(ax, (0.54, 0.60), (0.16, 0.13), "Epoch 1\nD1 / T1", COLORS["orange_light"], COLORS["orange"], fontsize=8.2)
@@ -623,7 +623,7 @@ def fig_hybrid_boundary():
     x = np.arange(len(profiles))
     w = 0.35
     ax.bar(x - w / 2, pref_ms, width=w, color=COLORS["gray"], label="Prefilter ms")
-    ax.bar(x + w / 2, dsg_ms, width=w, color=COLORS["blue"], label="Multi-DSG ms")
+    ax.bar(x + w / 2, dsg_ms, width=w, color=COLORS["blue"], label="DANA ms")
     ax.set_yscale("log")
     ax.set_ylabel("Latency (ms, log scale)")
     ax.set_xticks(x)
@@ -637,7 +637,7 @@ def fig_hybrid_boundary():
 
     ax.axvline(2.5, color=COLORS["red"], linestyle="--", linewidth=1)
     ax.text(1.2, 500, "Prefilter fallback", ha="center", fontsize=8, color=COLORS["red"])
-    ax.text(5.4, 500, "Use Multi-DSG", ha="center", fontsize=8, color=COLORS["blue"])
+    ax.text(5.4, 500, "Use DANA", ha="center", fontsize=8, color=COLORS["blue"])
     ax.legend(fontsize=8, frameon=False, loc="upper left")
     fig.tight_layout()
     save(fig, "fig_hybrid_boundary")
@@ -655,14 +655,14 @@ def fig_bigvectorbench_curve():
     ins_dist = np.array([640554.5, 996686.4, 1392908.3, 1814964.6, 2219654.9])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.4, 3.3))
-    ax1.plot(recall, qps, marker="o", color=COLORS["blue"], label="Multi-DSG")
+    ax1.plot(recall, qps, marker="o", color=COLORS["blue"], label="DANA")
     ax1.set_xlabel("Recall")
     ax1.set_ylabel("QPS")
     ax1.grid(color="#E0E0E0", linewidth=0.7)
     ax1.set_title("Recall-QPS", fontsize=10, weight="bold")
     ax1.legend(fontsize=8, frameon=False)
 
-    ax2.plot(recall, dist, marker="o", color=COLORS["blue"], label="Multi-DSG")
+    ax2.plot(recall, dist, marker="o", color=COLORS["blue"], label="DANA")
     ax2.plot(post_recall, post_dist, marker="s", color=COLORS["orange"], label="HNSW post-filter")
     ax2.plot(ins_recall, ins_dist, marker="^", color=COLORS["red"], label="HNSW in-search")
     ax2.set_yscale("log")
@@ -684,7 +684,7 @@ def fig_paper_structure():
     box(ax, (0.05, 0.72), (0.20, 0.12), "Problem\nmulti-attribute\nfiltered ANN", COLORS["gray_light"])
     box(ax, (0.31, 0.72), (0.20, 0.12), "Background\nsingle-attribute\nDSG", COLORS["blue_light"], COLORS["blue"])
     box(ax, (0.57, 0.72), (0.20, 0.12), "Extension\nconjunctive\nrange filters", COLORS["orange_light"], COLORS["orange"])
-    box(ax, (0.35, 0.49), (0.22, 0.13), "Multi-DSG\nmethod design", COLORS["green_light"], COLORS["green"])
+    box(ax, (0.35, 0.49), (0.22, 0.13), "DANA\nmethod design", COLORS["green_light"], COLORS["green"])
     box(ax, (0.13, 0.28), (0.22, 0.13), "Static query\nadaptive navigation\n+ in-search filtering", COLORS["purple_light"], COLORS["purple"], fontsize=8)
     box(ax, (0.57, 0.28), (0.22, 0.13), "Dynamic layer\nBase + Delta\n+ Tombstone", COLORS["red_light"], COLORS["red"], fontsize=8)
     box(ax, (0.35, 0.08), (0.22, 0.13), "Evaluation\nlarge scale + public\nfiltered ANN", COLORS["gray_light"], COLORS["gray"], fontsize=8)
@@ -703,7 +703,7 @@ def fig_paper_structure():
 
 def fig_dsg_to_multi_dsg():
     fig, ax = setup_ax((7.4, 3.8))
-    ax.text(0.02, 0.95, "From DSG to Multi-DSG", fontsize=12, weight="bold")
+    ax.text(0.02, 0.95, "From DSG to DANA", fontsize=12, weight="bold")
 
     ax.text(0.19, 0.85, "Original DSG", fontsize=10, weight="bold", ha="center")
     box(ax, (0.06, 0.65), (0.26, 0.11), "one numeric attribute", COLORS["blue_light"], COLORS["blue"])
@@ -714,7 +714,7 @@ def fig_dsg_to_multi_dsg():
     arrow(ax, (0.19, 0.48), (0.19, 0.42), COLORS["green"])
     arrow(ax, (0.19, 0.31), (0.19, 0.25), COLORS["gray"])
 
-    ax.text(0.73, 0.85, "Multi-DSG", fontsize=10, weight="bold", ha="center")
+    ax.text(0.73, 0.85, "DANA", fontsize=10, weight="bold", ha="center")
     box(ax, (0.59, 0.65), (0.28, 0.11), "m numerical attributes", COLORS["orange_light"], COLORS["orange"])
     box(ax, (0.50, 0.48), (0.18, 0.11), "rank attr0", COLORS["blue_light"], COLORS["blue"], fontsize=8)
     box(ax, (0.70, 0.48), (0.18, 0.11), "rank attr1..m", COLORS["blue_light"], COLORS["blue"], fontsize=8)
@@ -753,7 +753,7 @@ def fig_index_construction():
 
     box(ax, (0.33, 0.08), (0.24, 0.12), "rank_to_original\nfor every indexed attr", COLORS["gray_light"], COLORS["gray"], fontsize=8)
     arrow(ax, (0.41, 0.28), (0.45, 0.20), COLORS["gray"])
-    box(ax, (0.66, 0.08), (0.25, 0.12), "Multi-DSG index set\n{G_j, mappings}", COLORS["green_light"], COLORS["green"], fontsize=8)
+    box(ax, (0.66, 0.08), (0.25, 0.12), "DANA index set\n{G_j, mappings}", COLORS["green_light"], COLORS["green"], fontsize=8)
     arrow(ax, (0.57, 0.14), (0.66, 0.14), COLORS["green"])
     arrow(ax, (0.83, 0.28), (0.80, 0.20), COLORS["green"])
 
@@ -792,7 +792,7 @@ def fig_no_hard_pruning():
     ax.text(0.02, 0.94, "Why non-navigation predicates are not hard-pruned", fontsize=12, weight="bold")
 
     ax.text(0.25, 0.83, "Hard prune", fontsize=10, weight="bold", ha="center", color=COLORS["red"])
-    ax.text(0.74, 0.83, "Multi-DSG", fontsize=10, weight="bold", ha="center", color=COLORS["green"])
+    ax.text(0.74, 0.83, "DANA", fontsize=10, weight="bold", ha="center", color=COLORS["green"])
 
     def path_nodes(x0, y, show_bridge=True):
         xs = [x0, x0 + 0.15, x0 + 0.30]
@@ -877,7 +877,7 @@ def fig_contribution_map():
 
     box(ax, (0.34, 0.39), (0.28, 0.17), "Multi-attribute\nrange-filtered\nANN system", COLORS["gray_light"], COLORS["gray"])
     items = [
-        ((0.05, 0.68), "C1: Multi-DSG\none DSG per\nindexed attribute", COLORS["blue_light"], COLORS["blue"]),
+        ((0.05, 0.68), "C1: DANA\none DSG per\nindexed attribute", COLORS["blue_light"], COLORS["blue"]),
         ((0.38, 0.70), "C2: In-search\nconjunctive\nfiltering", COLORS["green_light"], COLORS["green"]),
         ((0.70, 0.68), "C3: Dynamic\nBase/Delta/\nTombstone", COLORS["red_light"], COLORS["red"]),
         ((0.12, 0.12), "C4: Hybrid +\nindex-budget\nanalysis", COLORS["orange_light"], COLORS["orange"]),
@@ -906,7 +906,7 @@ def fig_applicability_boundary():
     box(ax, (0.69, 0.27), (0.22, 0.12), "Index high-value\nattributes only", COLORS["purple_light"], COLORS["purple"], fontsize=8)
 
     box(ax, (0.37, 0.07), (0.22, 0.12), "Weak correlation\nand enough budget", COLORS["green_light"], COLORS["green"], fontsize=8)
-    box(ax, (0.69, 0.07), (0.22, 0.12), "Multi-DSG\nbest fit", COLORS["green_light"], COLORS["green"])
+    box(ax, (0.69, 0.07), (0.22, 0.12), "DANA\nbest fit", COLORS["green_light"], COLORS["green"])
 
     arrow(ax, (0.27, 0.78), (0.37, 0.78), COLORS["gray"])
     arrow(ax, (0.59, 0.78), (0.69, 0.78), COLORS["orange"])
@@ -978,7 +978,7 @@ def fig_intro_dynamic_framework_v2():
 
 
 def fig_search_mechanism_v2():
-    """Figure 2: running example of Multi-DSG query and update processing."""
+    """Figure 2: running example of DANA query and update processing."""
     fig, ax = setup_ax((7.0, 3.05))
     ax.plot([0.335, 0.335], [0.08, 0.91], color="#D7DCE1", lw=0.9)
     ax.plot([0.705, 0.705], [0.08, 0.91], color="#D7DCE1", lw=0.9)
@@ -1098,7 +1098,7 @@ def fig_search_mechanism_v2():
 
 def fig_deep10m_evidence_v2():
     """Figure 4: matched-recall graph-work benefit and storage cost."""
-    methods = ["HNSW\npost", "HNSW\nin-search", "Multi-DSG"]
+    methods = ["HNSW\npost", "HNSW\nin-search", "DANA"]
     dist = np.array([351958.6, 334501.3, 12689.9])
     storage = np.array([5.0, 5.0, 106.6])
     colors = ["#B9BEC4", "#747B83", COLORS["blue"]]

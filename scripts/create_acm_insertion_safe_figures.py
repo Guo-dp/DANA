@@ -491,7 +491,7 @@ def figure_running_example() -> None:
 
 
 def figure_main_comparison() -> None:
-    methods = ["HNSW\npost-filter", "HNSW\nin-search", "Multi-DSG"]
+    methods = ["HNSW\npost-filter", "HNSW\nin-search", "DANA"]
     dist = np.array([351_958.6, 334_501.3, 12_689.9])
     storage = np.array([5.0, 5.0, 106.6])
     x = np.arange(3)

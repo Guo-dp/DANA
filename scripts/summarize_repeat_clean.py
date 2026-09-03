@@ -66,7 +66,7 @@ def main() -> None:
     args = parse_args()
     root = Path(args.root)
     groups = {
-        "Multi-DSG ef1024": "dsg_ef1024_run*.log",
+        "DANA ef1024": "dsg_ef1024_run*.log",
         "Post-filter c16384": "post_c16384_run*.log",
         "In-search ef256": "insearch_ef256_run*.log",
     }
