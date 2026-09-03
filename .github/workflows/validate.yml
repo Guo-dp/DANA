@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Install smoke-test dependency
+        run: python -m pip install numpy
       - name: Validate Python and bundled data
         run: |
           python -m compileall -q scripts analysis
@@ -53,4 +55,5 @@ jobs:
             -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive \
             | tee smoke.log
           grep -Eq '^all[[:space:]]+queries=3 recall=1\.0000' smoke.log
+
 
