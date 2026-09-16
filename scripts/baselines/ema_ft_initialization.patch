@@ -1,0 +1,12 @@
+--- a/hnswlib/hnswalg.h
++++ b/hnswlib/hnswalg.h
+@@ -6595,5 +6595,3 @@
+         add_attr_to_point(cur_c, attr_data);
+-        // Node-level FT: hash own attributes into FT right after attrs are set
+-        update_node_ft(cur_c);
+         // int curlevel = getRandomLevel(mult_);
+         // if (level > 0)
+@@ -6613 +6611,3 @@
+         memset(data_level0_memory_ + cur_c * size_data_per_element_ + offsetLevel0_, 0, nbr_size_per_element);
++        // The cleared region includes FT: initialize it only after clearing.
++        update_node_ft(cur_c);

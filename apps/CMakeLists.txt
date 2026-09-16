@@ -17,6 +17,11 @@ add_dsg_app(query_static_index static/query_static_index.cc)
 add_dsg_app(query_multi_filter_benchmark static/query_multi_filter_benchmark.cc)
 add_dsg_app(query_multi_dsg_benchmark static/query_multi_dsg_benchmark.cc)
 
+# JSONL adapter used by the paper's DANA/EMA comparison. The adapter includes
+# the deployed benchmark parser so its input semantics stay identical.
+add_dsg_app(dana_external ${PROJECT_SOURCE_DIR}/scripts/baselines/dana_external.cpp)
+target_include_directories(dana_external PRIVATE ${PROJECT_SOURCE_DIR}/apps/static)
+
 add_dsg_app(build_dynamic_index dynamic/build_dynamic_index.cc)
 add_dsg_app(insert_and_query_dynamic_index dynamic/insert_and_query_dynamic_index.cc)
 

@@ -1,0 +1,91 @@
+{
+  "protocol": {
+    "repeats": 5,
+    "seed": 2039,
+    "top_k": 10,
+    "warmup_queries": 10,
+    "threads": 1,
+    "recall": "exact boundary-tie recall on filtered float64 squared-L2 ground truth",
+    "timing": "warm query API including routing and search; excludes loading, serialization, and exact evaluation; EMA includes Python wrapper"
+  },
+  "ema": {
+    "label": "EMA-FTFix-V2",
+    "upstream": "https://github.com/lmccccc/EMA",
+    "upstream_snapshot": "retained downloaded snapshot; upstream commit was not recorded",
+    "upstream_target_header_sha256": "eebd754577fe096c155479e738aa1601b6f1bd6a31ca4d7108cbbb6e87590242",
+    "M": 16,
+    "ef_construction": 500,
+    "ft_bits": 128,
+    "ef_top": 64,
+    "seed": 2037,
+    "graph_seed": 100,
+    "clustering_seed": 1234,
+    "formal_extension_sha256": "4abff11883bab17fcc6a69699dcdcaee48a0738d85bcaeb6a9a6d48254ad90a4"
+  },
+  "datasets": {
+    "deep10m": {
+      "label": "deep10m",
+      "prepared_name": "deep10m",
+      "base": "data/deep/base.10M.fbin",
+      "attrs": "data/deep_10m_96d/multiattr_independent/attrs.csv",
+      "dana_index_root": "index/static/deep_10m_96d/multi_dsg",
+      "dana_reordered_root": "data/deep_10m_96d/multiattr_independent/multi_dsg",
+      "dana_route": "adaptive",
+      "grids": {"dana": [128, 256, 512, 1024, 2048, 4096], "ema-ftfix-v2": [64, 128, 256, 512, 1024, 2048]},
+      "selected_efs": {"dana": [1024], "ema-ftfix-v2": [128]},
+      "recall_threshold": 0.999
+    },
+    "sift1m_sel10": {
+      "label": "sift1m_sel10",
+      "prepared_name": "sift1m_sel10",
+      "base": "data/sift1m_multiattr/vector/base.1M.fbin",
+      "attrs": "data/sift1m_multiattr/attr/attrs_independent_m4_1M.csv",
+      "dana_index_root": "index/static/sift1m_multiattr/multi_dsg",
+      "dana_reordered_root": "data/sift1m_multiattr/multi_dsg",
+      "dana_route": "adaptive",
+      "grids": {"dana": [128, 256, 512, 1024, 2048, 4096], "ema-ftfix-v2": [64, 128, 256, 512, 1024, 2048]},
+      "selected_efs": {"dana": [512], "ema-ftfix-v2": [128]},
+      "recall_threshold": 0.999
+    },
+    "sift1m_sel1": {
+      "label": "sift1m_sel1",
+      "prepared_name": "sift1m_sel1",
+      "base": "data/sift1m_multiattr/vector/base.1M.fbin",
+      "attrs": "data/sift1m_multiattr/attr/attrs_independent_m4_1M.csv",
+      "dana_index_root": "index/static/sift1m_multiattr/multi_dsg",
+      "dana_reordered_root": "data/sift1m_multiattr/multi_dsg",
+      "dana_route": "adaptive",
+      "grids": {"dana": [128, 256, 512, 1024, 2048, 4096], "ema-ftfix-v2": [64, 128, 256, 512, 1024, 2048]},
+      "selected_efs": {"dana": [1024], "ema-ftfix-v2": [64]},
+      "recall_threshold": 0.999
+    },
+    "app_reviews_validation": {
+      "label": "app_reviews_validation",
+      "prepared_name": "app_reviews_validation",
+      "ema_index_prepared_name": "app_reviews",
+      "base": "data/bigvectorbench/app_reviews_384_converted/base.277936.fbin",
+      "attrs": "data/bigvectorbench/app_reviews_384_converted/attrs.csv",
+      "dana_index_root": "index/static/bigvectorbench_app_reviews/multi_dsg",
+      "dana_reordered_root": "data/bigvectorbench/app_reviews_384_converted/multi_dsg",
+      "dana_route": "fixed",
+      "fixed_attr": 1,
+      "grids": {"dana": [1024, 2048, 4096, 8192], "ema-ftfix-v2": [16, 32, 64, 128, 256, 512, 1024, 2048]},
+      "selected_efs": {"dana": [2048, 8192], "ema-ftfix-v2": [16, 64]},
+      "recall_thresholds": [0.95, 0.98]
+    },
+    "app_reviews_test": {
+      "label": "app_reviews_test",
+      "prepared_name": "app_reviews_test",
+      "ema_index_prepared_name": "app_reviews",
+      "base": "data/bigvectorbench/app_reviews_384_converted/base.277936.fbin",
+      "attrs": "data/bigvectorbench/app_reviews_384_converted/attrs.csv",
+      "dana_index_root": "index/static/bigvectorbench_app_reviews/multi_dsg",
+      "dana_reordered_root": "data/bigvectorbench/app_reviews_384_converted/multi_dsg",
+      "dana_route": "fixed",
+      "fixed_attr": 1,
+      "grids": {"dana": [1024, 2048, 4096, 8192], "ema-ftfix-v2": [16, 32, 64, 128, 256, 512, 1024, 2048]},
+      "selected_efs": {"dana": [2048, 8192], "ema-ftfix-v2": [16, 64]},
+      "recall_thresholds": [0.95, 0.98]
+    }
+  }
+}

@@ -180,3 +180,15 @@ python3 scripts/summarize_deep_10m_results.py --help
 
 Run one benchmark process at a time. Record CPU, memory, compiler, thread count, and machine load. Repeat timing points at least three times. Use clean low-load runs for latency/QPS summaries; preserve but do not average known shared-server anomaly runs. Recall and deterministic work counters may still be compared when their output is identical.
 
+## 8. DANA/EMA Static Comparison
+
+The paper baseline package is documented separately in [DANA_EMA_REPRODUCIBILITY.md](DANA_EMA_REPRODUCIBILITY.md). It includes:
+
+- the exact DANA JSONL adapter used by the formal measurements;
+- a shared workload converter and exact evaluator;
+- three isolated EMA-FTFix-V2 patch files and a zero-fuzz application script;
+- frozen search grids, App validation/test split, and selected operating points;
+- compact five-run results and a machine-readable audit.
+
+The comparison uses exact boundary-tie Recall and does not claim a dynamic-maintenance comparison with EMA.
+

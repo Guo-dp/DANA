@@ -1,0 +1,22 @@
+{
+  "formal_dana_executable_sha256": "f28db2c8507ddbaaf9c63af8ffc84e2466b822d627ccf4130685690fb0bc76d4",
+  "formal_dana_adapter_sha256": "447952681fb86ebb0100706d74ac3cb75250ce2bcf0944de85511d4466ff0f04",
+  "formal_dana_query_source_sha256": "2e669ff6b4a0de8459a07d37549755daf1a2127dc6756290ba814c64adce978e",
+  "formal_dana_dsg_source_sha256": "d97d106891220239781b5f83bf6559899fd7b31e6c1dd94d1499e24d5be2bb14",
+  "formal_ema_adapter_sha256": "c7093f5940b255f36c14655be08a558df41d43fd2637d6c1f2f384644fdae661",
+  "formal_ema_v2_extension_sha256": "4abff11883bab17fcc6a69699dcdcaee48a0738d85bcaeb6a9a6d48254ad90a4",
+  "retained_ema_original_extension_sha256": "ff75ca7f53c34458625248a70726df729c764d7cc4b0f1ecde02104097c96209",
+  "formal_evaluator_sha256": "62d682fd414a5d94e6221000774ee9170c2ccded69a2b0f82c18875d292a876e",
+  "audit": {
+    "status": "PASS_WITH_LIMITATIONS",
+    "runs_recomputed": 260,
+    "query_records_recomputed": 880000,
+    "ema_v2_log_index_bindings_verified": 120
+  },
+  "limitations": [
+    "Query-level JSONL files are omitted from Git due artifact size.",
+    "Historical index contents are not all bound by archived SHA-256 values.",
+    "Five repetitions reuse one index and do not measure build variance.",
+    "The shared server was not exclusively core-pinned."
+  ]
+}

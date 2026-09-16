@@ -1,0 +1,7 @@
+--- a/hnswlib/hnswalg.h
++++ b/hnswlib/hnswalg.h
+@@ -285,2 +285,4 @@
++        // lower_bound must map every stored value to an allocated FT bit.
++        mapping.back() = std::max(mapping.back(), indexed.back());
+         std::cout << "num-attribute split positions: ";
+         for (int i = 0; i < M; i++) {

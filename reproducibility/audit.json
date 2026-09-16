@@ -1,0 +1,96 @@
+{
+  "status": "PASS_WITH_LIMITATIONS",
+  "checks": {
+    "archived_code_and_library_version": {
+      "status": "pass",
+      "local_files_rehashed": {
+        "scripts\\baselines\\ema_external.py": "c7093f5940b255f36c14655be08a558df41d43fd2637d6c1f2f384644fdae661",
+        "scripts\\baselines\\dana_external.cpp": "447952681fb86ebb0100706d74ac3cb75250ce2bcf0944de85511d4466ff0f04",
+        "scripts\\baselines\\evaluate_external.py": "62d682fd414a5d94e6221000774ee9170c2ccded69a2b0f82c18875d292a876e",
+        "apps\\static\\query_multi_dsg_benchmark.cc": "2e669ff6b4a0de8459a07d37549755daf1a2127dc6756290ba814c64adce978e",
+        "src\\dsg.cc": "d97d106891220239781b5f83bf6559899fd7b31e6c1dd94d1499e24d5be2bb14"
+      },
+      "formal_dana_source_snapshot": "this release repository",
+      "release_matches_formal_source_hashes": true,
+      "dana_server_executable_sha256": "f28db2c8507ddbaaf9c63af8ffc84e2466b822d627ccf4130685690fb0bc76d4",
+      "ema_v2_library_path_suffix": "baselines/ema_ftfix_v2_lib/hashannlib.cpython-311-x86_64-linux-gnu.so",
+      "ema_v2_library_sha256_from_server_binary_audit": "4abff11883bab17fcc6a69699dcdcaee48a0738d85bcaeb6a9a6d48254ad90a4",
+      "note": "This release repository matches the archived formal DANA source hashes. The EMA shared object is not included and was not rehashed here."
+    },
+    "paper_batch_raw_recalculation": {
+      "status": "pass",
+      "runs_recomputed": 240,
+      "query_records_recomputed": 780000,
+      "ema_v2_log_to_index_bindings": 120,
+      "selected_budgets_verified": {
+        "deep10m": {
+          "ema-ftfix-v2": 128,
+          "dana": 1024
+        },
+        "sift1m_sel10": {
+          "ema-ftfix-v2": 128,
+          "dana": 512
+        },
+        "sift1m_sel1": {
+          "ema-ftfix-v2": 64,
+          "dana": 1024
+        }
+      },
+      "recall_metric": "exact_boundary_tie_recall"
+    },
+    "app_final_raw_recalculation": {
+      "status": "pass",
+      "runs_recomputed": 20,
+      "query_records_recomputed": 100000,
+      "selection_hash_verified": true,
+      "split_hash_verified": true,
+      "frozen_selection": {
+        "dana_fixed_timestamp": {
+          "0.95": 2048,
+          "0.98": 8192
+        },
+        "ema_ftfix_v2": {
+          "0.95": 16,
+          "0.98": 64
+        }
+      },
+      "index_metadata": {
+        "dana": {
+          "bytes": 2119542360,
+          "files": 3,
+          "paths": [
+            "${DANA_ROOT}/index/static/bigvectorbench_app_reviews/multi_dsg/attr1.dsg",
+            "${DANA_ROOT}/index/static/bigvectorbench_app_reviews/multi_dsg/attr2.dsg",
+            "${DANA_ROOT}/index/static/bigvectorbench_app_reviews/multi_dsg/attr0.dsg"
+          ]
+        },
+        "ema-ftfix-v2": {
+          "bytes": 483753832,
+          "files": 1,
+          "paths": [
+            "${PREPARED_ROOT}/app_reviews/ema-ftfix-v2/index.bin"
+          ]
+        }
+      }
+    },
+    "timing_disclosure": {
+      "status": "pass",
+      "warmup_queries": 10,
+      "query_threads": 1,
+      "included": "routing, predicate/rank handling, search, returned-ID materialization",
+      "excluded": "loading, serialization, exact ground-truth and recall evaluation",
+      "ema_wrapper_included": true
+    }
+  },
+  "totals": {
+    "runs_recomputed": 260,
+    "query_records_recomputed": 880000
+  },
+  "limitations": [
+    "Formal index contents are not fully bound by archived SHA-256 values.",
+    "A hash computed now cannot by itself prove which file an earlier run loaded.",
+    "The EMA V2 shared-object hash comes from the retained server binary audit; the shared object is not present in the local package.",
+    "Five repetitions reuse one index and do not measure construction variance.",
+    "The shared server was not exclusively core-pinned."
+  ]
+}

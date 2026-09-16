@@ -19,6 +19,10 @@ DANA is an engineering extension built from multiple legal one-dimensional DSG i
 - `results/raw_logs.tar.gz`: all 462 synchronized experiment logs.
 - `results/raw_logs_manifest.csv`: per-log path, size, SHA-256, and metric-line count.
 - `analysis/`: result extraction and plotting utilities.
+- `scripts/baselines/`: DANA/EMA adapters, EMA-FTFix-V2 patches, shared evaluator, and comparison runner.
+- `configs/dana_ema_paper.json`: frozen search grids and selected paper operating points.
+- `results/ema_comparison/`: compact DANA/EMA paper points and five-run summaries.
+- `reproducibility/`: audit report and artifact-manifest template.
 
 ## Quick Start
 
@@ -37,6 +41,8 @@ cmake --build build -j "$(nproc)"
 
 The deterministic vector sanity test verifies squared-L2 distances, filtering, ties, and expected Top-3 results. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for end-to-end commands and [DATA.md](DATA.md) for data formats.
 
+For the static DANA/EMA paper comparison, including the explicitly labelled EMA-FTFix-V2 patches and exact boundary-tie Recall protocol, see [DANA_EMA_REPRODUCIBILITY.md](DANA_EMA_REPRODUCIBILITY.md).
+
 ## Reproduced Experiment Families
 
 - DEEP-1M and DEEP-10M, 96 dimensions, synthetic independent scalar attributes.
@@ -49,3 +55,5 @@ Raw timing logs include the original machine conditions. For shared-server timin
 ## Data And Licensing
 
 Code is released under [LICENSE](LICENSE). Third-party datasets are not redistributed and remain subject to their original licenses. Generated `.dsg` and `.hnsw` indexes are reproducible artifacts and are excluded from Git history.
+
+EMA is a third-party project and is not redistributed here. Apply the published patches to a separately obtained EMA checkout subject to its upstream license. The retained experimental checkout lacked Git metadata; the target-header preimage hash and all available version boundaries are disclosed in the comparison guide.

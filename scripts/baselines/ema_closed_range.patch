@@ -1,0 +1,5 @@
+--- a/hnswlib/hnswalg.h
++++ b/hnswlib/hnswalg.h
+@@ -2091 +2091 @@
+-                    for (int val = low_slot; val < high_slot; ++val){
++                    for (int val = low_slot; val <= high_slot; ++val){
