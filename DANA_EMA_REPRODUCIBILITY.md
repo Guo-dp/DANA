@@ -82,7 +82,7 @@ python scripts/baselines/prepare_prepared_subset.py \
   --output /artifact/prepared/app_reviews_test
 ```
 
-The split contains 5,000 training queries, of which 2,000 are validation queries, and 5,000 test queries. The public main table uses validation-frozen fixed timestamp routing (`attr1`) for DANA on App-Reviews.
+The split contains 3,000 fitting, 2,000 validation, and 5,000 evaluation queries. The public main table uses validation-frozen fixed timestamp routing (`attr1`) for DANA on App-Reviews.
 
 ## Index Construction
 
@@ -104,7 +104,7 @@ EMA uses 128 FT bits, `ef_top=64`, graph seed 100, and clustering seed 1234. The
 
 ## Run The Formal Points
 
-Run the selected paper points with five randomized, interleaved repetitions:
+Run the selected paper points with five repetitions using the archived randomized scheduling protocol. App-Reviews uses interleaved evaluation, while DEEP/SIFT use randomized configuration order:
 
 ```bash
 COMMON="--config configs/dana_ema_paper.json \
