@@ -73,6 +73,11 @@ done
 
 Expected aggregate recall is `1.0000`.
 
+The navigation--admission code path can be switched without rebuilding any
+index. Add `-admission_mode bridge` (the default) to use bridge-preserving
+traversal, or add `-admission_mode hard_prune` for the controlled
+full-predicate hard-pruning ablation.
+
 ## 3. DEEP-10M Paper Workflow
 
 Download dimension-matched DEEP files into `data/deep/`:
@@ -102,6 +107,19 @@ bash scripts/run_deep_10m_key_experiments.sh summarize
 ```
 
 The build requires substantial time and storage. The synchronized run produced three DSG indexes of roughly 34 GiB each and one HNSW index of roughly 5 GiB.
+
+After those indexes exist, reproduce the paired DEEP-10M
+navigation--admission ablation with:
+
+```bash
+bash scripts/run_nav_admission_ablation.sh 3
+python3 scripts/summarize_nav_admission_ablation.py \
+  logs/deep_10m_96d/followup/nav_admission \
+  --output results/followup_experiments/nav_admission_deep10m/summary.csv
+```
+
+The runner alternates execution order across repetitions and changes only
+`-admission_mode`; the DSGs, queries, routing, `k`, and `ef` are fixed.
 
 ## 4. BigVectorBench App-Reviews
 
@@ -165,6 +183,17 @@ bash scripts/dynamic/rebuild_multi_dsg_snapshot.sh \
 
 The dynamic design keeps stable original IDs, scans the Delta exactly, suppresses Base versions with tombstones, and rebuilds rank-based DSG indexes from a snapshot.
 
+For an explicit sequential committed-state audit on the prepared 100K
+workload and its existing rebuilt snapshot:
+
+```bash
+bash scripts/run_dynamic_correctness_audit.sh
+```
+
+The script fails if any stale-version, deleted-ID, duplicate-ID, predicate,
+invalid-ID, insertion-visibility, update-visibility, or deletion-visibility
+counter is nonzero.
+
 ## 6. Raw Logs And Verification
 
 ```bash
@@ -191,4 +220,10 @@ The paper baseline package is documented separately in [DANA_EMA_REPRODUCIBILITY
 - compact five-run results and a machine-readable audit.
 
 The comparison uses exact boundary-tie Recall and does not claim a dynamic-maintenance comparison with EMA.
+
+Regenerate the five-run variability table with:
+
+```bash
+python3 scripts/baselines/summarize_repetition_variability.py
+```
 

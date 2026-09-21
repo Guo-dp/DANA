@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <queue>
 #include <stdexcept>
 #include <unordered_map>
@@ -37,6 +38,13 @@ public:
         unsigned original_id = 0;
         std::vector<float> vector;
         std::vector<float> attrs;
+        std::uint64_t version = 0;
+    };
+
+    struct ResultAudit {
+        unsigned original_id = 0;
+        std::uint64_t version = 0;
+        bool from_delta = false;
     };
 
     DynamicMultiDsgIndex(
@@ -93,6 +101,10 @@ public:
         return last_stats_;
     }
 
+    const std::vector<ResultAudit> &lastResultAudit() const {
+        return last_result_audit_;
+    }
+
 private:
     bool deltaPassesFilter(
         const DeltaPoint &point,
@@ -123,6 +135,7 @@ private:
     double rebuild_fraction_ = 0.05;
 
     SearchStats last_stats_;
+    std::vector<ResultAudit> last_result_audit_;
 };
 
 } // namespace dsg

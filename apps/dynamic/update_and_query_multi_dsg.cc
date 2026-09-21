@@ -11,6 +11,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base_hnsw/hnswlib.h"
@@ -45,6 +47,7 @@ struct Config {
     unsigned seed = 2030;
     double rebuild_fraction = 0.05;
     std::string snapshot_dir;
+    bool audit_correctness = false;
 };
 
 struct FilterCase {
@@ -62,6 +65,15 @@ struct EvalResult {
     double delta_scan_ms = 0.0;
     double merge_ms = 0.0;
     std::size_t queries = 0;
+    std::size_t audited_results = 0;
+    std::size_t stale_version_violations = 0;
+    std::size_t deleted_id_violations = 0;
+    std::size_t duplicate_id_violations = 0;
+    std::size_t predicate_violations = 0;
+    std::size_t invalid_id_violations = 0;
+    std::size_t inserted_visibility_violations = 0;
+    std::size_t updated_visibility_violations = 0;
+    std::size_t deleted_visibility_violations = 0;
 };
 
 Config parseArgs(int argc, char **argv) {
@@ -126,6 +138,9 @@ Config parseArgs(int argc, char **argv) {
                 std::stod(value("-rebuild_fraction"));
         else if (arg == "-snapshot_dir")
             cfg.snapshot_dir = value("-snapshot_dir");
+        else if (arg == "-audit_correctness")
+            cfg.audit_correctness =
+                std::stoul(value("-audit_correctness")) != 0;
     }
 
     if (cfg.dataset_path.empty() ||
@@ -454,9 +469,57 @@ EvalResult evaluate(
     const std::vector<FilterCase> &filters,
     unsigned eval_queries,
     unsigned top_k,
-    unsigned search_ef) {
+    unsigned search_ef,
+    bool audit_correctness,
+    const std::unordered_set<unsigned> &inserted_ids,
+    const std::unordered_set<unsigned> &updated_ids,
+    const std::unordered_set<unsigned> &deleted_ids) {
 
     EvalResult result;
+    std::vector<dsg::DynamicMultiDsgIndex::SnapshotPoint>
+        committed_snapshot;
+    std::unordered_map<
+        unsigned,
+        const dsg::DynamicMultiDsgIndex::SnapshotPoint *>
+        committed_by_id;
+
+    if (audit_correctness) {
+        committed_snapshot = index.createSnapshot();
+        committed_by_id.reserve(committed_snapshot.size());
+
+        for (const auto &point : committed_snapshot) {
+            const auto inserted =
+                committed_by_id.emplace(
+                    point.original_id, &point);
+
+            if (!inserted.second) {
+                ++result.duplicate_id_violations;
+            }
+        }
+
+        for (const unsigned id : inserted_ids) {
+            if (committed_by_id.find(id) ==
+                committed_by_id.end()) {
+                ++result.inserted_visibility_violations;
+            }
+        }
+
+        for (const unsigned id : updated_ids) {
+            const auto found = committed_by_id.find(id);
+
+            if (found == committed_by_id.end() ||
+                found->second->version == 0) {
+                ++result.updated_visibility_violations;
+            }
+        }
+
+        for (const unsigned id : deleted_ids) {
+            if (committed_by_id.find(id) !=
+                committed_by_id.end()) {
+                ++result.deleted_visibility_violations;
+            }
+        }
+    }
 
     const std::size_t count =
         std::min<std::size_t>(
@@ -492,6 +555,66 @@ EvalResult evaluate(
 
         const auto approximate_end =
             std::chrono::steady_clock::now();
+
+        if (audit_correctness) {
+            std::unordered_set<unsigned> query_ids;
+            const auto &audit = index.lastResultAudit();
+
+            if (audit.size() != actual.size()) {
+                ++result.invalid_id_violations;
+            }
+
+            for (std::size_t position = 0;
+                 position < actual.size();
+                 ++position) {
+                const unsigned id = actual[position];
+                ++result.audited_results;
+
+                if (!query_ids.insert(id).second) {
+                    ++result.duplicate_id_violations;
+                }
+
+                const auto found = committed_by_id.find(id);
+
+                if (found == committed_by_id.end()) {
+                    if (deleted_ids.find(id) !=
+                        deleted_ids.end()) {
+                        ++result.deleted_id_violations;
+                    } else {
+                        ++result.invalid_id_violations;
+                    }
+                    continue;
+                }
+
+                const auto &point = *found->second;
+
+                if (position >= audit.size() ||
+                    audit[position].original_id != id ||
+                    audit[position].version != point.version) {
+                    ++result.stale_version_violations;
+                }
+
+                if (point.attrs.size() !=
+                    test.filter.bounds.size()) {
+                    ++result.predicate_violations;
+                    continue;
+                }
+
+                for (std::size_t attr = 0;
+                     attr < point.attrs.size();
+                     ++attr) {
+                    const float value = point.attrs[attr];
+                    const auto &bound =
+                        test.filter.bounds[attr];
+
+                    if (value < bound.low ||
+                        value > bound.high) {
+                        ++result.predicate_violations;
+                        break;
+                    }
+                }
+            }
+        }
 
         result.recall +=
             recallAtK(exact, actual, top_k);
@@ -575,6 +698,29 @@ EvalResult evaluate(
             << index.tombstoneCount()
             << " rebuild="
             << (index.needsRebuild() ? "yes" : "no")
+            << "\n";
+    }
+
+    if (audit_correctness) {
+        std::cout
+            << "audit phase=" << phase
+            << " audited_results=" << result.audited_results
+            << " stale_version_violations="
+            << result.stale_version_violations
+            << " deleted_id_violations="
+            << result.deleted_id_violations
+            << " duplicate_id_violations="
+            << result.duplicate_id_violations
+            << " predicate_violations="
+            << result.predicate_violations
+            << " invalid_id_violations="
+            << result.invalid_id_violations
+            << " inserted_visibility_violations="
+            << result.inserted_visibility_violations
+            << " updated_visibility_violations="
+            << result.updated_visibility_violations
+            << " deleted_visibility_violations="
+            << result.deleted_visibility_violations
             << "\n";
     }
 
@@ -679,6 +825,10 @@ int main(int argc, char **argv) {
                 cfg.filter_path,
                 cfg.attr_count);
 
+        std::unordered_set<unsigned> inserted_ids;
+        std::unordered_set<unsigned> updated_ids;
+        std::unordered_set<unsigned> deleted_ids;
+
         evaluate(
             "base",
             dynamic_index,
@@ -686,7 +836,11 @@ int main(int argc, char **argv) {
             filters,
             cfg.eval_queries,
             cfg.query_k,
-            cfg.search_ef);
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
 
         std::mt19937 random(cfg.seed);
         std::uniform_real_distribution<float>
@@ -710,9 +864,10 @@ int main(int argc, char **argv) {
                     noise(random);
             }
 
-            dynamic_index.insert(
-                vector.data(),
-                attributesOf(data, source));
+            inserted_ids.insert(
+                dynamic_index.insert(
+                    vector.data(),
+                    attributesOf(data, source)));
         }
 
         evaluate(
@@ -722,7 +877,11 @@ int main(int argc, char **argv) {
             filters,
             cfg.eval_queries,
             cfg.query_k,
-            cfg.search_ef);
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
 
         // 修改Base点的属性。
         for (unsigned i = 0;
@@ -736,6 +895,7 @@ int main(int argc, char **argv) {
             dynamic_index.updateAttributes(
                 target,
                 attributesOf(data, attr_source));
+            updated_ids.insert(target);
         }
 
         evaluate(
@@ -745,7 +905,11 @@ int main(int argc, char **argv) {
             filters,
             cfg.eval_queries,
             cfg.query_k,
-            cfg.search_ef);
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
 
         // 删除Base尾部的点，避免与更新集合重叠。
         for (unsigned i = 0;
@@ -756,6 +920,7 @@ int main(int argc, char **argv) {
                     data.data_size - 1) - i;
 
             dynamic_index.erase(target);
+            deleted_ids.insert(target);
         }
 
         evaluate(
@@ -765,7 +930,11 @@ int main(int argc, char **argv) {
             filters,
             cfg.eval_queries,
             cfg.query_k,
-            cfg.search_ef);
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
 
         if (dynamic_index.needsRebuild() &&
             !cfg.snapshot_dir.empty()) {

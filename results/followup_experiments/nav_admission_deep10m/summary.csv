@@ -1,0 +1,3 @@
+mode,ef,runs,recall_mean,recall_std,graph_ms_mean,graph_ms_std,pooled_qps,qps_mean,qps_std,hops_mean,dist_mean,pruned_mean,insufficient_mean
+bridge,1024,3,0.999300,0.000000,13.540133,1.279277,73.854516,74.283233,6.814548,1029.591,12689.855,0.000,0.000
+hard_prune,1024,3,0.776400,0.000000,15.514167,4.398688,64.457217,68.374000,20.961327,984.292,3282.127,15166.279,32.000

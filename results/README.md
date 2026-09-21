@@ -18,3 +18,7 @@ tar -xzf results/raw_logs.tar.gz -C reproduced_logs
 - `all_metric_lines`: number of aggregate metric rows beginning with `all`.
 
 The archive preserves raw output, including exploratory sweeps and timing runs affected by shared-server load. Paper timing summaries should use explicitly named clean/repeat directories and report the repeat count.
+
+`followup_experiments/` contains the compact logs and per-query outputs for
+the controlled navigation--admission ablation and the dynamic committed-state
+correctness audit added after the original synchronized archive.

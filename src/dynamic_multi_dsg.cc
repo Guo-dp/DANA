@@ -261,6 +261,8 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
     unsigned top_k,
     unsigned search_ef) {
 
+    last_result_audit_.clear();
+
     if (query == nullptr || top_k == 0) {
         return {};
     }
@@ -290,7 +292,14 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
             filter.bounds[navigation_attr].low,
             filter.bounds[navigation_attr].high);
 
-    std::vector<std::pair<float, unsigned>> merged;
+    struct Candidate {
+        float distance = 0.0F;
+        unsigned original_id = 0;
+        std::uint64_t version = 0;
+        bool from_delta = false;
+    };
+
+    std::vector<Candidate> merged;
 
     if (rank_bound.first <= rank_bound.second) {
         DynamicSegmentGraph *index =
@@ -315,8 +324,7 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
                 base_data_,
                 rank_to_base_local_.at(navigation_attr));
 
-            std::vector<std::pair<float, unsigned>>
-                valid_base;
+            std::vector<Candidate> valid_base;
 
             valid_base.reserve(
                 index->returned_nns.size());
@@ -331,11 +339,13 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
                     continue;
                 }
 
-                valid_base.emplace_back(
+                valid_base.push_back({
                     squaredL2(
                         query,
                         base_data_->nodes[base_local_id]),
-                    stable_id);
+                    stable_id,
+                    0,
+                    false});
             }
 
             last_stats_.base_candidates =
@@ -388,9 +398,11 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
             continue;
         }
 
-        merged.emplace_back(
+        merged.push_back({
             squaredL2(query, point.vector.data()),
-            point.original_id);
+            point.original_id,
+            point.version,
+            true});
     }
 
     const auto delta_end =
@@ -405,11 +417,11 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
     std::sort(
         merged.begin(),
         merged.end(),
-        [](const auto &left, const auto &right) {
-            if (left.first != right.first) {
-                return left.first < right.first;
+        [](const Candidate &left, const Candidate &right) {
+            if (left.distance != right.distance) {
+                return left.distance < right.distance;
             }
-            return left.second < right.second;
+            return left.original_id < right.original_id;
         });
 
     std::vector<unsigned> result;
@@ -419,11 +431,15 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
     std::unordered_set<unsigned> emitted;
 
     for (const auto &candidate : merged) {
-        if (!emitted.insert(candidate.second).second) {
+        if (!emitted.insert(candidate.original_id).second) {
             continue;
         }
 
-        result.push_back(candidate.second);
+        result.push_back(candidate.original_id);
+        last_result_audit_.push_back({
+            candidate.original_id,
+            candidate.version,
+            candidate.from_delta});
 
         if (result.size() == top_k) {
             break;
@@ -569,6 +585,7 @@ DynamicMultiDsgIndex::createSnapshot() const {
 
         SnapshotPoint point;
         point.original_id = stable_id;
+        point.version = 0;
 
         point.vector.assign(
             base_data_->nodes[base_local_id],
@@ -598,6 +615,8 @@ DynamicMultiDsgIndex::createSnapshot() const {
             delta_point.vector;
         point.attrs =
             delta_point.attrs;
+        point.version =
+            delta_point.version;
 
         snapshot.push_back(std::move(point));
     }

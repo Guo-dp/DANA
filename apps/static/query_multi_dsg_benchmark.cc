@@ -36,6 +36,7 @@ struct Config {
     std::string attr_weights_arg;
     std::vector<double> attr_weights;
     std::string per_query_path;
+    std::string admission_mode = "bridge";
     std::string attr_path;
     std::string filter_path;
 };
@@ -53,6 +54,8 @@ struct Metrics {
     double exact_seconds = 0.0;
     double hops_sum = 0.0;
     double distance_sum = 0.0;
+    double hard_pruned_sum = 0.0;
+    std::size_t insufficient = 0;
 };
 
 std::vector<std::string> splitComma(const std::string &line) {
@@ -173,6 +176,8 @@ Config parseArgs(int argc, char **argv) {
             cfg.attr_weights_arg = value("-attr_weights");
         else if (arg == "-per_query_path")
             cfg.per_query_path = value("-per_query_path");
+        else if (arg == "-admission_mode")
+            cfg.admission_mode = value("-admission_mode");
         else if (arg == "-attr_path") cfg.attr_path = value("-attr_path");
         else if (arg == "-attr_count") cfg.attr_count = std::stoul(value("-attr_count"));
         else if (arg == "-filter_path") cfg.filter_path = value("-filter_path");
@@ -187,6 +192,11 @@ Config parseArgs(int argc, char **argv) {
         throw std::runtime_error("Required paths are missing");
     }
     cfg.attr_weights = parseAttrWeights(cfg.attr_weights_arg, cfg.attr_count);
+    if (cfg.admission_mode != "bridge" &&
+        cfg.admission_mode != "hard_prune") {
+        throw std::runtime_error(
+            "admission_mode must be bridge or hard_prune");
+    }
     return cfg;
 }
 
@@ -338,6 +348,8 @@ void printMetrics(const std::string &name, const Metrics &metrics) {
               << " qps=" << qps
               << " hops=" << metrics.hops_sum / count
               << " dist=" << metrics.distance_sum / count
+              << " pruned=" << metrics.hard_pruned_sum / count
+              << " insufficient=" << metrics.insufficient
               << "\n";
 }
 
@@ -422,7 +434,7 @@ std::unordered_map<std::string, Metrics> by_profile;
                 throw std::runtime_error("Cannot open per-query output: " +
                                          cfg.per_query_path);
             }
-            per_query << "query_idx,profile,nav_attr,recall,graph_ms,exact_ms,hops,dist,span0,span1,span2" << "\n";
+            per_query << "query_idx,profile,nav_attr,recall,graph_ms,exact_ms,hops,dist,pruned,result_count,insufficient,span0,span1,span2" << "\n";
         }
 
         auto chooseIndexedNavigationAttribute =
@@ -506,7 +518,8 @@ std::unordered_map<std::string, Metrics> by_profile;
                      static_cast<int>(rank_bound.second)},
                     test.filter,
                     &data,
-                    rank_to_original[static_cast<std::size_t>(navigation_slot)]);
+                    rank_to_original[static_cast<std::size_t>(navigation_slot)],
+                    cfg.admission_mode == "hard_prune");
 
                 graph = selected_index.returned_nns;
             }
@@ -529,6 +542,12 @@ std::unordered_map<std::string, Metrics> by_profile;
                     indexes[static_cast<std::size_t>(navigation_slot)]->last_hop_count());
                 metrics.distance_sum += static_cast<double>(
                     indexes[static_cast<std::size_t>(navigation_slot)]->last_distance_eval_count());
+                metrics.hard_pruned_sum += static_cast<double>(
+                    indexes[static_cast<std::size_t>(navigation_slot)]->last_hard_pruned_count());
+                if (graph.size() < static_cast<std::size_t>(cfg.query_k) &&
+                    exact.size() >= static_cast<std::size_t>(cfg.query_k)) {
+                    ++metrics.insufficient;
+                }
             };
             update(by_profile[test.profile]);
             update(total);
@@ -541,7 +560,11 @@ std::unordered_map<std::string, Metrics> by_profile;
                           << graph_seconds * 1000.0 << ","
                           << exact_seconds * 1000.0 << ","
                           << indexes[static_cast<std::size_t>(navigation_slot)]->last_hop_count() << ","
-                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_distance_eval_count();
+                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_distance_eval_count() << ","
+                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_hard_pruned_count() << ","
+                          << graph.size() << ","
+                          << ((graph.size() < static_cast<std::size_t>(cfg.query_k) &&
+                               exact.size() >= static_cast<std::size_t>(cfg.query_k)) ? 1 : 0);
                 for (unsigned attr = 0; attr < cfg.attr_count; ++attr) {
                     per_query << "," << rankRangeWidth(data, test.filter, attr);
                 }
@@ -559,7 +582,8 @@ std::unordered_map<std::string, Metrics> by_profile;
         std::cout << "\n";
 
         std::cout << "search_ef=" << cfg.search_ef
-                  << " nav_mode=" << cfg.nav_mode;
+                  << " nav_mode=" << cfg.nav_mode
+                  << " admission_mode=" << cfg.admission_mode;
         if (cfg.nav_mode == "fixed") {
             std::cout << " fixed_attr=" << cfg.fixed_attr;
         }

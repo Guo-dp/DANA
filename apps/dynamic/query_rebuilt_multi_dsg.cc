@@ -11,6 +11,8 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base_hnsw/hnswlib.h"
@@ -46,6 +48,8 @@ struct Config {
     unsigned seed = 2030;
     double rebuild_fraction = 0.05;
     std::string snapshot_dir;
+    unsigned original_base_size = 0;
+    bool audit_correctness = false;
 };
 
 struct FilterCase {
@@ -60,6 +64,15 @@ struct EvalResult {
     double delta_scanned = 0.0;
     double base_candidates = 0.0;
     std::size_t queries = 0;
+    std::size_t audited_results = 0;
+    std::size_t stale_version_violations = 0;
+    std::size_t deleted_id_violations = 0;
+    std::size_t duplicate_id_violations = 0;
+    std::size_t predicate_violations = 0;
+    std::size_t invalid_id_violations = 0;
+    std::size_t inserted_visibility_violations = 0;
+    std::size_t updated_visibility_violations = 0;
+    std::size_t deleted_visibility_violations = 0;
 };
 
 Config parseArgs(int argc, char **argv) {
@@ -127,6 +140,12 @@ Config parseArgs(int argc, char **argv) {
                 std::stod(value("-rebuild_fraction"));
         else if (arg == "-snapshot_dir")
             cfg.snapshot_dir = value("-snapshot_dir");
+        else if (arg == "-original_base_size")
+            cfg.original_base_size =
+                std::stoul(value("-original_base_size"));
+        else if (arg == "-audit_correctness")
+            cfg.audit_correctness =
+                std::stoul(value("-audit_correctness")) != 0;
     }
 
     if (cfg.dataset_path.empty() ||
@@ -456,9 +475,54 @@ EvalResult evaluate(
     const std::vector<FilterCase> &filters,
     unsigned eval_queries,
     unsigned top_k,
-    unsigned search_ef) {
+    unsigned search_ef,
+    bool audit_correctness,
+    const std::unordered_set<unsigned> &inserted_ids,
+    const std::unordered_set<unsigned> &updated_ids,
+    const std::unordered_set<unsigned> &deleted_ids) {
 
     EvalResult result;
+    std::vector<dsg::DynamicMultiDsgIndex::SnapshotPoint>
+        committed_snapshot;
+    std::unordered_map<
+        unsigned,
+        const dsg::DynamicMultiDsgIndex::SnapshotPoint *>
+        committed_by_id;
+
+    if (audit_correctness) {
+        committed_snapshot = index.createSnapshot();
+        committed_by_id.reserve(committed_snapshot.size());
+
+        for (const auto &point : committed_snapshot) {
+            const auto inserted = committed_by_id.emplace(
+                point.original_id, &point);
+
+            if (!inserted.second) {
+                ++result.duplicate_id_violations;
+            }
+        }
+
+        for (const unsigned id : inserted_ids) {
+            if (committed_by_id.find(id) ==
+                committed_by_id.end()) {
+                ++result.inserted_visibility_violations;
+            }
+        }
+
+        for (const unsigned id : updated_ids) {
+            if (committed_by_id.find(id) ==
+                committed_by_id.end()) {
+                ++result.updated_visibility_violations;
+            }
+        }
+
+        for (const unsigned id : deleted_ids) {
+            if (committed_by_id.find(id) !=
+                committed_by_id.end()) {
+                ++result.deleted_visibility_violations;
+            }
+        }
+    }
 
     const std::size_t count =
         std::min<std::size_t>(
@@ -494,6 +558,66 @@ EvalResult evaluate(
 
         const auto approximate_end =
             std::chrono::steady_clock::now();
+
+        if (audit_correctness) {
+            std::unordered_set<unsigned> query_ids;
+            const auto &audit = index.lastResultAudit();
+
+            if (audit.size() != actual.size()) {
+                ++result.invalid_id_violations;
+            }
+
+            for (std::size_t position = 0;
+                 position < actual.size();
+                 ++position) {
+                const unsigned id = actual[position];
+                ++result.audited_results;
+
+                if (!query_ids.insert(id).second) {
+                    ++result.duplicate_id_violations;
+                }
+
+                if (deleted_ids.find(id) !=
+                    deleted_ids.end()) {
+                    ++result.deleted_id_violations;
+                }
+
+                const auto found = committed_by_id.find(id);
+
+                if (found == committed_by_id.end()) {
+                    ++result.invalid_id_violations;
+                    continue;
+                }
+
+                const auto &point = *found->second;
+
+                if (position >= audit.size() ||
+                    audit[position].original_id != id ||
+                    audit[position].version != point.version) {
+                    ++result.stale_version_violations;
+                }
+
+                if (point.attrs.size() !=
+                    test.filter.bounds.size()) {
+                    ++result.predicate_violations;
+                    continue;
+                }
+
+                for (std::size_t attr = 0;
+                     attr < point.attrs.size();
+                     ++attr) {
+                    const float value = point.attrs[attr];
+                    const auto &bound =
+                        test.filter.bounds[attr];
+
+                    if (value < bound.low ||
+                        value > bound.high) {
+                        ++result.predicate_violations;
+                        break;
+                    }
+                }
+            }
+        }
 
         result.recall +=
             recallAtK(exact, actual, top_k);
@@ -542,6 +666,29 @@ EvalResult evaluate(
             << index.tombstoneCount()
             << " rebuild="
             << (index.needsRebuild() ? "yes" : "no")
+            << "\n";
+    }
+
+    if (audit_correctness) {
+        std::cout
+            << "audit phase=post_rebuild"
+            << " audited_results=" << result.audited_results
+            << " stale_version_violations="
+            << result.stale_version_violations
+            << " deleted_id_violations="
+            << result.deleted_id_violations
+            << " duplicate_id_violations="
+            << result.duplicate_id_violations
+            << " predicate_violations="
+            << result.predicate_violations
+            << " invalid_id_violations="
+            << result.invalid_id_violations
+            << " inserted_visibility_violations="
+            << result.inserted_visibility_violations
+            << " updated_visibility_violations="
+            << result.updated_visibility_violations
+            << " deleted_visibility_violations="
+            << result.deleted_visibility_violations
             << "\n";
     }
 
@@ -649,6 +796,29 @@ int main(int argc, char **argv) {
                 cfg.filter_path,
                 cfg.attr_count);
 
+        std::unordered_set<unsigned> inserted_ids;
+        std::unordered_set<unsigned> updated_ids;
+        std::unordered_set<unsigned> deleted_ids;
+
+        if (cfg.audit_correctness) {
+            if (cfg.original_base_size == 0) {
+                throw std::runtime_error(
+                    "original_base_size is required for correctness audit");
+            }
+
+            for (unsigned i = 0; i < cfg.insert_count; ++i) {
+                inserted_ids.insert(cfg.original_base_size + i);
+            }
+
+            for (unsigned i = 0; i < cfg.update_count; ++i) {
+                updated_ids.insert(i);
+            }
+
+            for (unsigned i = 0; i < cfg.delete_count; ++i) {
+                deleted_ids.insert(cfg.original_base_size - 1 - i);
+            }
+        }
+
         evaluate(
             "base",
             dynamic_index,
@@ -656,7 +826,11 @@ int main(int argc, char **argv) {
             filters,
             cfg.eval_queries,
             cfg.query_k,
-            cfg.search_ef);
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
 
     } catch (const std::exception &error) {
         std::cerr

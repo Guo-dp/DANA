@@ -912,7 +912,8 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
     const std::pair<int, int> &query_bound,
     const MultiRangeQuery &filter,
     const DataWrapper *original_data,
-    const std::vector<unsigned> &rank_to_original) {
+    const std::vector<unsigned> &rank_to_original,
+    bool hard_prune) {
 
     const int left = query_bound.first;
     const int right = query_bound.second;
@@ -925,6 +926,13 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
     hnswlib::vl_type visited_array_tag = vl->curV;
     std::size_t hop_counter = 0;
     std::size_t distance_eval_count = 0;
+    std::size_t hard_pruned_count = 0;
+
+    auto passes_full_filter = [&](unsigned rank) {
+        return rank < rank_to_original.size() &&
+               original_data->passFilter(
+                   rank_to_original[rank], filter);
+    };
 
     auto timed_distance = [&](unsigned label) -> DistType {
         ++distance_eval_count;
@@ -969,6 +977,10 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
             return false;
         }
         visited_array[label] = visited_array_tag;
+        if (hard_prune && !passes_full_filter(label)) {
+            ++hard_pruned_count;
+            return false;
+        }
         const DistType dist = timed_distance(label);
 
         candidate_set.emplace(dist, label);
@@ -1021,6 +1033,7 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
         returned_nns.clear();
         last_hop_count_ = 0;
         last_distance_eval_count_ = 0;
+        last_hard_pruned_count_ = hard_pruned_count;
         visited_list_pool_->releaseVisitedList(vl);
         std::cout << "[DSG] No inserted seed found in the query range"
                   << std::endl;
@@ -1220,6 +1233,11 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
         for (const auto neighbor : fetched_nns) {
             visited_array[neighbor] = visited_array_tag;
 
+            if (hard_prune && !passes_full_filter(neighbor)) {
+                ++hard_pruned_count;
+                continue;
+            }
+
             const DistType nbr_dist = timed_distance(neighbor);
 
             bool admit_for_navigation = false;
@@ -1259,6 +1277,7 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
 
     last_hop_count_ = hop_counter;
     last_distance_eval_count_ = distance_eval_count;
+    last_hard_pruned_count_ = hard_pruned_count;
 }
 
 void DynamicSegmentGraph::rangeSearchMultiExact(const float *query,

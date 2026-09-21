@@ -106,7 +106,8 @@ public:
         const std::pair<int, int> &query_bound,
         const MultiRangeQuery &filter,
         const DataWrapper *original_data,
-        const std::vector<unsigned> &rank_to_original);
+        const std::vector<unsigned> &rank_to_original,
+        bool hard_prune = false);
 
     void rangeSearch(const float *query,
                     const MultiRangeQuery &filter) override;
@@ -165,6 +166,8 @@ public:
     std::size_t last_hop_count() const noexcept { return last_hop_count_; }
     /// Last query distance evaluation count.
     std::size_t last_distance_eval_count() const noexcept { return last_distance_eval_count_; }
+    /// Nodes rejected from navigation by full-predicate hard pruning.
+    std::size_t last_hard_pruned_count() const noexcept { return last_hard_pruned_count_; }
 
 private:
     /// @brief Scratchpad buffers reused during per-node level-0 KNN candidate generation.
@@ -314,6 +317,7 @@ private:
     std::size_t last_hop_count_ = 0;
     /// Last query distance evaluation count.
     std::size_t last_distance_eval_count_ = 0;
+    std::size_t last_hard_pruned_count_ = 0;
 
     InsertionStats insertion_stats_{};
 };
