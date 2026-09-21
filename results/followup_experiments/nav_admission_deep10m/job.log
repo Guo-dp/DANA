@@ -1,0 +1,12 @@
+run=1 admission_mode=bridge ef=1024
+all        queries=1000 recall=0.9993 graph_ms=14.9479 exact_ms=157.7577 qps=66.8989 hops=1029.5910 dist=12689.8550 pruned=0.0000 insufficient=0
+run=1 admission_mode=hard_prune ef=1024
+all        queries=1000 recall=0.7764 graph_ms=15.9345 exact_ms=175.1310 qps=62.7569 hops=984.2920 dist=3282.1270 pruned=15166.2790 insufficient=32
+run=2 admission_mode=hard_prune ef=1024
+all        queries=1000 recall=0.7764 graph_ms=19.6876 exact_ms=173.2176 qps=50.7935 hops=984.2920 dist=3282.1270 pruned=15166.2790 insufficient=32
+run=2 admission_mode=bridge ef=1024
+all        queries=1000 recall=0.9993 graph_ms=13.2238 exact_ms=166.3696 qps=75.6213 hops=1029.5910 dist=12689.8550 pruned=0.0000 insufficient=0
+run=3 admission_mode=bridge ef=1024
+all        queries=1000 recall=0.9993 graph_ms=12.4487 exact_ms=169.0147 qps=80.3295 hops=1029.5910 dist=12689.8550 pruned=0.0000 insufficient=0
+run=3 admission_mode=hard_prune ef=1024
+all        queries=1000 recall=0.7764 graph_ms=10.9204 exact_ms=207.3856 qps=91.5716 hops=984.2920 dist=3282.1270 pruned=15166.2790 insufficient=32

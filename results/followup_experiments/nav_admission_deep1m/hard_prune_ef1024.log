@@ -1,0 +1,20 @@
+Load vecs from: data/deep_1m_96d/base.1M.96d.fbin
+# of vecs: 1000000
+indexed_attributes attr0 attr1 attr2
+Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr0.fbin
+# of vecs: 1000000
+Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr1.fbin
+# of vecs: 1000000
+Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr2.fbin
+# of vecs: 1000000
+selected_attributes attr0=500 attr1=250 attr2=250
+search_ef=1024 nav_mode=adaptive admission_mode=hard_prune
+attr0_narrow queries=250 recall=0.9512 graph_ms=8.7846 exact_ms=14.8500 qps=113.8350 hops=1032.5640 dist=2323.5080 pruned=6964.2360 insufficient=0
+attr1_narrow queries=250 recall=0.9516 graph_ms=8.6116 exact_ms=18.5099 qps=116.1222 hops=1031.4840 dist=2350.9840 pruned=7033.7960 insufficient=0
+attr2_narrow queries=250 recall=0.9592 graph_ms=11.0271 exact_ms=20.7178 qps=90.6860 hops=1031.5600 dist=2289.8760 pruned=6853.9160 insufficient=0
+balanced   queries=250 recall=0.0040 graph_ms=0.2836 exact_ms=11.5374 qps=3525.9037 hops=27.1680 dist=27.1680 pruned=630.1520 insufficient=82
+attr0_narrow queries=250 recall=0.9512 graph_ms=8.7846 exact_ms=14.8500 qps=113.8350 hops=1032.5640 dist=2323.5080 pruned=6964.2360 insufficient=0
+attr1_narrow queries=250 recall=0.9516 graph_ms=8.6116 exact_ms=18.5099 qps=116.1222 hops=1031.4840 dist=2350.9840 pruned=7033.7960 insufficient=0
+attr2_narrow queries=250 recall=0.9592 graph_ms=11.0271 exact_ms=20.7178 qps=90.6860 hops=1031.5600 dist=2289.8760 pruned=6853.9160 insufficient=0
+balanced   queries=250 recall=0.0040 graph_ms=0.2836 exact_ms=11.5374 qps=3525.9037 hops=27.1680 dist=27.1680 pruned=630.1520 insufficient=82
+all        queries=1000 recall=0.7165 graph_ms=7.1767 exact_ms=16.4038 qps=139.3391 hops=780.6940 dist=1747.8840 pruned=5370.5250 insufficient=82
