@@ -977,6 +977,8 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
             return false;
         }
         visited_array[label] = visited_array_tag;
+        // Controlled ablation gate: all seed anchors, probes, heaps, and
+        // termination rules are shared across modes.
         if (hard_prune && !passes_full_filter(label)) {
             ++hard_pruned_count;
             return false;
@@ -1233,6 +1235,8 @@ void DynamicSegmentGraph::rangeSearchMultiDsg(
         for (const auto neighbor : fetched_nns) {
             visited_array[neighbor] = visited_array_tag;
 
+            // The only neighbor-path difference in hard-prune mode is this
+            // full-predicate gate before frontier admission.
             if (hard_prune && !passes_full_filter(neighbor)) {
                 ++hard_pruned_count;
                 continue;

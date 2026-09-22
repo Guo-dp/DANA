@@ -13,7 +13,9 @@ paper campaign.
 
 `bridge` allows full-predicate-invalid objects to remain navigation bridges but
 does not admit them to the answer heap. `hard_prune` rejects such objects before
-neighbor expansion.
+neighbor expansion. Both modes otherwise share the deterministic seed-probe
+schedule, heaps, edge checks, search width, and stopping rule. The actually
+admitted seed set can differ because seed rejection is part of hard pruning.
 
 ## Dynamic correctness audit
 
@@ -24,7 +26,9 @@ neighbor expansion.
 
 The audit checks stale versions, deleted IDs, duplicate IDs, predicate
 violations, invalid IDs, and operation-set visibility. The reproduction script
-fails if any violation counter is nonzero.
+fails if any violation counter is nonzero. Every visibility field is explicitly
+a violation count; zero means no missing expected-live ID and no surviving
+expected-deleted ID, not zero visible objects.
 
 `manifest.csv` records the byte size, SHA-256, and metric-line count for every
 file in this directory. Refresh it together with the top-level artifact hash

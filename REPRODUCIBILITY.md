@@ -194,6 +194,11 @@ The script fails if any stale-version, deleted-ID, duplicate-ID, predicate,
 invalid-ID, insertion-visibility, update-visibility, or deletion-visibility
 counter is nonzero.
 
+All `*_visibility_violations` values are violation counts rather than visible
+object counts. A value of zero means that no violation was detected. The exact
+control variables for the hard-pruning ablation and the audit-counter semantics
+are documented in `docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md`.
+
 ## 6. Raw Logs And Verification
 
 ```bash

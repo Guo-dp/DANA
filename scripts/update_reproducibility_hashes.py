@@ -17,6 +17,7 @@ ADDITIONAL_PATHS = {
     "REPRODUCIBILITY.md",
     "apps/dynamic/query_rebuilt_multi_dsg.cc",
     "apps/dynamic/update_and_query_multi_dsg.cc",
+    "docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md",
     "docs/EMA_REPETITION_STATISTICS.md",
     "include/dsg.h",
     "include/dynamic_multi_dsg.h",
