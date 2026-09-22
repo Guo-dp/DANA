@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="${ROOT_DIR:-$HOME/snap/VD/DRFA/Dynamic-Range-Filtering-ANNS-release_version}"
+ROOT_DIR="${ROOT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 RUNS="${1:-3}"
 EF="${EF:-1024}"
 LOG_ROOT="${LOG_ROOT:-$ROOT_DIR/logs/deep_10m_96d/followup/nav_admission}"

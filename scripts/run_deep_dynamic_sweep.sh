@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-ROOT="$HOME/snap/VD/DRFA/Dynamic-Range-Filtering-ANNS-release_version"
-cd "$ROOT" || exit 1
+ROOT_DIR="${ROOT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+cd "$ROOT_DIR" || exit 1
 
 APP="./build/apps/update_and_query_dana"
 LOG_ROOT="logs/deep_multi_independent/dynamic"

@@ -183,12 +183,81 @@ bash scripts/dynamic/rebuild_dana_snapshot.sh \
 
 The dynamic design keeps stable original IDs, scans the Delta exactly, suppresses Base versions with tombstones, and rebuilds rank-based DSG indexes from a snapshot.
 
-For an explicit sequential committed-state audit on the prepared 100K
-workload and its existing rebuilt snapshot:
+### Fresh-clone prerequisites for the dynamic correctness audit
+
+After installing the Python dependencies and completing the Release build in
+Section 1, run the following from the repository root. Generate the independent
+100K workload (32 dimensions, three attributes, 300 queries), reorder it by each
+attribute, and build the three initial DSG indexes used by DANA:
+
+```bash
+python3 scripts/generate_multiattr_independent_data.py \
+  --output data/multiattr_100k_independent \
+  --size 100000 --dim 32 --queries 300 --topk 10 --seed 2029
+
+python3 scripts/prepare_dana_data.py \
+  --base data/multiattr_100k_independent/base.100000.fbin \
+  --attrs data/multiattr_100k_independent/attrs.csv \
+  --attr-count 3 --output data/multiattr_100k_independent/dana
+
+mkdir -p index/static/multiattr_100k_independent/dana
+for attr in 0 1 2; do
+  ./build/apps/build_static_index \
+    -dataset "multiattr_100k_independent_attr${attr}" -N 100000 \
+    -dataset_path "data/multiattr_100k_independent/dana/base.attr${attr}.fbin" \
+    -query_path data/multiattr_100k_independent/query.300.fbin \
+    -index_path "index/static/multiattr_100k_independent/dana/attr${attr}.dsg" \
+    -k 16 -ef_construction 100 -ef_max 200 -alpha 1.0
+done
+```
+
+Export a committed snapshot after 100 insertions, 100 attribute updates, and
+100 deletions. These counts match the post-rebuild audit's expected stable IDs.
+The snapshot still contains 100000 points because insertions and deletions
+balance. The explicit `-rebuild_fraction 0.001` triggers export after the 300
+changed IDs; the default 0.05 threshold would not export this small update batch.
+
+```bash
+./build/apps/update_and_query_dana \
+  -dataset multiattr_100k_independent -N 100000 \
+  -dataset_path data/multiattr_100k_independent/base.100000.fbin \
+  -query_path data/multiattr_100k_independent/query.300.fbin \
+  -attr_path data/multiattr_100k_independent/attrs.csv \
+  -filter_path data/multiattr_100k_independent/filters.csv \
+  -index_root index/static/multiattr_100k_independent/dana \
+  -reordered_data_root data/multiattr_100k_independent/dana \
+  -attr_count 3 -query_num 300 -query_k 10 -search_ef 512 \
+  -eval_queries 300 -insert_count 100 -update_count 100 -delete_count 100 \
+  -seed 2030 -rebuild_fraction 0.001 -audit_correctness 1 \
+  -snapshot_dir data/multiattr_100k_independent/rebuild_snapshot
+
+test -s data/multiattr_100k_independent/rebuild_snapshot/base.snapshot.fbin
+test -s data/multiattr_100k_independent/rebuild_snapshot/snapshot_to_original.ibin
+
+bash scripts/dynamic/rebuild_dana_snapshot.sh \
+  data/multiattr_100k_independent/rebuild_snapshot \
+  data/multiattr_100k_independent/query.300.fbin \
+  index/static/multiattr_100k_independent/rebuilt_dana \
+  logs/multiattr_100k_independent/rebuild 3 100000
+```
+
+The rebuild helper reorders `base.snapshot.fbin` and `attrs.snapshot.csv` into
+`rebuild_snapshot/dana`, builds `attr0.dsg` through `attr2.dsg` under
+`rebuilt_dana`, and installs the rank and stable-ID mappings. Its six positional
+arguments are snapshot directory, query file, index directory, log directory,
+attribute count, and snapshot point count.
+
+Now run the sequential committed-state audit. Its first phase independently
+applies 1000 insertions, updates, and deletions to the original indexes; its
+second phase checks the 100-operation snapshot prepared above:
 
 ```bash
 bash scripts/run_dynamic_correctness_audit.sh
 ```
+
+The three experiment runners `run_nav_admission_ablation.sh`,
+`run_dynamic_correctness_audit.sh`, and `run_deep_dynamic_sweep.sh` resolve the
+repository root from their own script locations. Set `ROOT_DIR` to override it.
 
 The script fails if any stale-version, deleted-ID, duplicate-ID, predicate,
 invalid-ID, insertion-visibility, update-visibility, or deletion-visibility
