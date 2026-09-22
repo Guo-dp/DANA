@@ -101,7 +101,7 @@ public:
      * All primary-range-valid nodes may participate in navigation.
      * Only nodes passing all attributes enter the result heap.
      */
-    void rangeSearchMultiDsg(
+    void rangeSearchDana(
         const float *query,
         const std::pair<int, int> &query_bound,
         const MultiRangeQuery &filter,

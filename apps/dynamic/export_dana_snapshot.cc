@@ -6,14 +6,14 @@
 #include <string>
 #include <vector>
 
-#include "dynamic_multi_dsg.h"
+#include "dynamic_dana.h"
 
 namespace fs = std::filesystem;
 
 void writeFbin(
     const fs::path &path,
     const std::vector<
-        dsg::DynamicMultiDsgIndex::SnapshotPoint> &points,
+        dsg::DynamicDanaIndex::SnapshotPoint> &points,
     std::size_t dim) {
 
     std::ofstream output(
@@ -45,7 +45,7 @@ void writeFbin(
 void writeAttributes(
     const fs::path &path,
     const std::vector<
-        dsg::DynamicMultiDsgIndex::SnapshotPoint> &points) {
+        dsg::DynamicDanaIndex::SnapshotPoint> &points) {
 
     std::ofstream output(path);
 
@@ -66,7 +66,7 @@ void writeAttributes(
 void writeStableIds(
     const fs::path &path,
     const std::vector<
-        dsg::DynamicMultiDsgIndex::SnapshotPoint> &points) {
+        dsg::DynamicDanaIndex::SnapshotPoint> &points) {
 
     std::ofstream output(
         path,

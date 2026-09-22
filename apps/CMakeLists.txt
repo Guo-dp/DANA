@@ -15,7 +15,7 @@ add_dsg_app(generate_groundtruth_static static/generate_groundtruth_static.cc)
 add_dsg_app(build_static_index static/build_static_index.cc)
 add_dsg_app(query_static_index static/query_static_index.cc)
 add_dsg_app(query_multi_filter_benchmark static/query_multi_filter_benchmark.cc)
-add_dsg_app(query_multi_dsg_benchmark static/query_multi_dsg_benchmark.cc)
+add_dsg_app(query_dana_benchmark static/query_dana_benchmark.cc)
 
 # JSONL adapter used by the paper's DANA/EMA comparison. The adapter includes
 # the deployed benchmark parser so its input semantics stay identical.
@@ -40,8 +40,8 @@ add_dsg_app(query_hnsw_postfilter_benchmark
 add_dsg_app(query_hnsw_insearch_benchmark
             static/query_hnsw_insearch_benchmark.cc)
 
-add_dsg_app(update_and_query_multi_dsg
-            dynamic/update_and_query_multi_dsg.cc)
+add_dsg_app(update_and_query_dana
+            dynamic/update_and_query_dana.cc)
 
-add_dsg_app(query_rebuilt_multi_dsg
-            dynamic/query_rebuilt_multi_dsg.cc)
+add_dsg_app(query_rebuilt_dana
+            dynamic/query_rebuilt_dana.cc)

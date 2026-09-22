@@ -48,7 +48,7 @@ def main() -> None:
     args = parse_args()
     root = Path(args.log_root)
     rows = [
-        *collect(root, "multi_dsg", "DANA ef"),
+        *collect(root, "dana", "DANA ef"),
         *collect(root, "hnsw_postfilter", "HNSW post c"),
         *collect(root, "hnsw_insearch", "HNSW in-search ef"),
     ]

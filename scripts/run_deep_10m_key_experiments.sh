@@ -8,9 +8,9 @@ set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-$(pwd)}"
 DATA_ROOT="${DATA_ROOT:-data/deep_10m_96d}"
 WORKLOAD_ROOT="${WORKLOAD_ROOT:-${DATA_ROOT}/multiattr_independent}"
-REORDER_ROOT="${REORDER_ROOT:-${WORKLOAD_ROOT}/multi_dsg}"
+REORDER_ROOT="${REORDER_ROOT:-${WORKLOAD_ROOT}/dana}"
 INDEX_ROOT="${INDEX_ROOT:-index/static/deep_10m_96d}"
-DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/multi_dsg}"
+DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/dana}"
 HNSW_INDEX="${HNSW_INDEX:-${INDEX_ROOT}/hnsw/M16.hnsw}"
 LOG_ROOT="${LOG_ROOT:-logs/deep_10m_96d}"
 
@@ -118,7 +118,7 @@ if run_stage reorder; then
   if [[ "$complete" == yes ]]; then
     echo "[skip] all reordered vectors and mappings already exist"
   else
-    /usr/bin/time -v python3 scripts/prepare_multi_dsg_data_memmap.py \
+    /usr/bin/time -v python3 scripts/prepare_dana_data_memmap.py \
       --base "$BASE" \
       --attrs "$ATTRS" \
       --attr-count "$ATTR_COUNT" \
@@ -176,21 +176,21 @@ if run_stage build_hnsw; then
 fi
 
 if run_stage query_dsg; then
-  need_executable ./build/apps/query_multi_dsg_benchmark
+  need_executable ./build/apps/query_dana_benchmark
   need_file "$ATTRS"
   need_file "$FILTERS"
   for attr in $(seq 0 $((ATTR_COUNT - 1))); do
     need_file "$DSG_INDEX_ROOT/attr${attr}.dsg"
   done
-  mkdir -p "$LOG_ROOT/query/multi_dsg"
+  mkdir -p "$LOG_ROOT/query/dana"
   for ef in 768 1024 1536; do
-    log="$LOG_ROOT/query/multi_dsg/ef${ef}.log"
+    log="$LOG_ROOT/query/dana/ef${ef}.log"
     if [[ -s "$log" ]] && grep -q '^all' "$log"; then
       echo "[skip] completed DANA ef=$ef"
       continue
     fi
     echo "===== DANA ef=$ef ====="
-    ./build/apps/query_multi_dsg_benchmark \
+    ./build/apps/query_dana_benchmark \
       -dataset deep_10m_96d \
       -N "$N" \
       -dataset_path "$BASE" \

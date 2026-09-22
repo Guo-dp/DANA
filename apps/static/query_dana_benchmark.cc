@@ -512,7 +512,7 @@ std::unordered_map<std::string, Metrics> by_profile;
                 selected_index.setQueryTopK(
                     static_cast<unsigned>(cfg.query_k));
 
-                selected_index.rangeSearchMultiDsg(
+                selected_index.rangeSearchDana(
                     query,
                     {static_cast<int>(rank_bound.first),
                      static_cast<int>(rank_bound.second)},
@@ -611,7 +611,7 @@ std::unordered_map<std::string, Metrics> by_profile;
 
         printMetrics("all", total);
     } catch (const std::exception &error) {
-        std::cerr << "query_multi_dsg_benchmark failed: "
+        std::cerr << "query_dana_benchmark failed: "
                   << error.what() << "\n";
         return 1;
     }

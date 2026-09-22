@@ -1,10 +1,10 @@
 Load vecs from: data/multiattr_100k_independent/base.100000.fbin
 # of vecs: 100000
-Load vecs from: data/multiattr_100k_independent/multi_dsg/base.attr0.fbin
+Load vecs from: data/multiattr_100k_independent/dana/base.attr0.fbin
 # of vecs: 100000
-Load vecs from: data/multiattr_100k_independent/multi_dsg/base.attr1.fbin
+Load vecs from: data/multiattr_100k_independent/dana/base.attr1.fbin
 # of vecs: 100000
-Load vecs from: data/multiattr_100k_independent/multi_dsg/base.attr2.fbin
+Load vecs from: data/multiattr_100k_independent/dana/base.attr2.fbin
 # of vecs: 100000
 base               queries=300 recall=1.0000 approx_ms=0.8083 exact_ms=1.7112 qps=1237.1170 base_search_ms=0.8074 delta_scan_ms=0.0001 merge_ms=0.0006 other_ms=0.0003 base_candidates=10.0000 delta_scanned=0.0000 delta_size=0 tombstones=0 rebuild=no
 audit phase=base audited_results=3000 stale_version_violations=0 deleted_id_violations=0 duplicate_id_violations=0 predicate_violations=0 invalid_id_violations=0 inserted_visibility_violations=0 updated_visibility_violations=0 deleted_visibility_violations=0

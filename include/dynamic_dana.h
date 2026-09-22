@@ -15,7 +15,7 @@
 
 namespace dsg {
 
-class DynamicMultiDsgIndex {
+class DynamicDanaIndex {
 public:
     struct DeltaPoint {
         unsigned original_id = 0;
@@ -47,7 +47,7 @@ public:
         bool from_delta = false;
     };
 
-    DynamicMultiDsgIndex(
+    DynamicDanaIndex(
         const DataWrapper *base_data,
         std::vector<DynamicSegmentGraph *> indexes,
         std::vector<std::vector<unsigned>> rank_to_base_local,

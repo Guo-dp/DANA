@@ -477,7 +477,7 @@ def fig_dynamic_growth():
     save(fig, "fig_dynamic_growth")
 
 
-def fig_multi_dsg_overview():
+def fig_dana_overview():
     fig, ax = setup_ax((7.4, 3.7))
     ax.text(0.02, 0.95, "DANA overview", fontsize=12, weight="bold")
 
@@ -511,7 +511,7 @@ def fig_multi_dsg_overview():
     ax.text(0.50, 0.235, "rank -> original_id", fontsize=8, color=COLORS["gray"])
     arrow(ax, (0.66, 0.30), (0.72, 0.18), COLORS["gray"], lw=1.0)
 
-    save(fig, "fig_multi_dsg_overview")
+    save(fig, "fig_dana_overview")
 
 
 def fig_in_search_filtering():
@@ -547,7 +547,7 @@ def fig_in_search_filtering():
     save(fig, "fig_in_search_filtering")
 
 
-def fig_dynamic_multi_dsg():
+def fig_dynamic_dana():
     fig, ax = setup_ax((7.4, 4.0))
     ax.text(0.02, 0.95, "Dynamic DANA: Base + Delta + Tombstone + rebuild", fontsize=12, weight="bold")
 
@@ -576,7 +576,7 @@ def fig_dynamic_multi_dsg():
     arrow(ax, (0.81, 0.20), (0.24, 0.58), COLORS["purple"], rad=0.24)
 
     ax.text(0.33, 0.235, "rank -> snapshot local ID -> stable original ID", fontsize=8, color=COLORS["gray"])
-    save(fig, "fig_dynamic_multi_dsg")
+    save(fig, "fig_dynamic_dana")
 
 
 def fig_indexed_attrs_tradeoff():
@@ -701,7 +701,7 @@ def fig_paper_structure():
     save(fig, "fig_paper_structure")
 
 
-def fig_dsg_to_multi_dsg():
+def fig_dsg_to_dana():
     fig, ax = setup_ax((7.4, 3.8))
     ax.text(0.02, 0.95, "From DSG to DANA", fontsize=12, weight="bold")
 
@@ -731,7 +731,7 @@ def fig_dsg_to_multi_dsg():
     arrow(ax, (0.34, 0.50), (0.48, 0.50), COLORS["purple"], lw=1.8)
     ax.text(0.41, 0.55, "preserve\n1D rank semantics", fontsize=8, ha="center", color=COLORS["purple"])
 
-    save(fig, "fig_dsg_to_multi_dsg")
+    save(fig, "fig_dsg_to_dana")
 
 
 def fig_index_construction():

@@ -1,3 +1,3 @@
 method,dataset,index_path,index_bytes,sha256,source_commit_or_hash,build_command,notes
-DANA,deep10m,index/static/deep_10m_96d/multi_dsg/attr0.dsg,,,,,
+DANA,deep10m,index/static/deep_10m_96d/dana/attr0.dsg,,,,,
 EMA-FTFix-V2,deep10m,PREPARED_ROOT/deep10m/ema-ftfix-v2/index.bin,,,,,

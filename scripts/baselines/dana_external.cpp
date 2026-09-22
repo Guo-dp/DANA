@@ -1,6 +1,6 @@
 // Reuse the deployed parser and search implementation without changing it.
 #define main historical_benchmark_main
-#include "query_multi_dsg_benchmark.cc"
+#include "query_dana_benchmark.cc"
 #undef main
 #include <filesystem>
 
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
             hops = dist = 0;
             if (bound.first > bound.second) return std::vector<unsigned>{};
             auto& g = *indexes[slot];
-            g.rangeSearchMultiDsg(data.querys.at(t.query_idx),
+            g.rangeSearchDana(data.querys.at(t.query_idx),
                 {static_cast<int>(bound.first), static_cast<int>(bound.second)},
                 t.filter, &data, maps[slot]);
             hops = g.last_hop_count(); dist = g.last_distance_eval_count();

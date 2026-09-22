@@ -15,9 +15,9 @@ set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-$(pwd)}"
 DATA_ROOT="${DATA_ROOT:-data/deep_10m_96d}"
 WORKLOAD_ROOT="${WORKLOAD_ROOT:-${DATA_ROOT}/multiattr_independent}"
-REORDER_ROOT="${REORDER_ROOT:-${WORKLOAD_ROOT}/multi_dsg}"
+REORDER_ROOT="${REORDER_ROOT:-${WORKLOAD_ROOT}/dana}"
 INDEX_ROOT="${INDEX_ROOT:-index/static/deep_10m_96d}"
-DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/multi_dsg}"
+DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/dana}"
 LOG_ROOT="${LOG_ROOT:-logs/deep_10m_96d}"
 
 BASE="${BASE:-data/deep/base.10M.fbin}"
@@ -67,7 +67,7 @@ if run_stage repeat_summary; then
 fi
 
 if run_stage indexed_attrs; then
-  need_executable ./build/apps/query_multi_dsg_benchmark
+  need_executable ./build/apps/query_dana_benchmark
   need_file "$BASE"
   need_file "$QUERY"
   need_file "$ATTRS"
@@ -82,7 +82,7 @@ if run_stage indexed_attrs; then
       continue
     fi
     echo "===== indexed attrs=$attrs ef=$SEARCH_EF ====="
-    ./build/apps/query_multi_dsg_benchmark \
+    ./build/apps/query_dana_benchmark \
       -dataset deep_10m_96d \
       -N "$N" \
       -dataset_path "$BASE" \
@@ -143,14 +143,14 @@ if run_stage prefilter; then
 fi
 
 if run_stage dsg_selectivity; then
-  need_executable ./build/apps/query_multi_dsg_benchmark
+  need_executable ./build/apps/query_dana_benchmark
   need_file "$SELECTIVITY_FILTERS"
   mkdir -p "$LOG_ROOT/prefilter_hybrid"
-  log="$LOG_ROOT/prefilter_hybrid/multi_dsg_selectivity_ef${SEARCH_EF}.log"
+  log="$LOG_ROOT/prefilter_hybrid/dana_selectivity_ef${SEARCH_EF}.log"
   if [[ -s "$log" ]] && grep -q '^all' "$log"; then
     echo "[skip] completed DANA selectivity"
   else
-    ./build/apps/query_multi_dsg_benchmark \
+    ./build/apps/query_dana_benchmark \
       -dataset deep_10m_96d \
       -N "$N" \
       -dataset_path "$BASE" \
@@ -171,7 +171,7 @@ fi
 if run_stage hybrid_summary; then
   python3 scripts/summarize_hybrid_thresholds.py \
     --prefilter-log "$LOG_ROOT/prefilter_hybrid/prefilter_selectivity.log" \
-    --dsg-log "$LOG_ROOT/prefilter_hybrid/multi_dsg_selectivity_ef${SEARCH_EF}.log" \
+    --dsg-log "$LOG_ROOT/prefilter_hybrid/dana_selectivity_ef${SEARCH_EF}.log" \
     --thresholds 1000,5000,10000,50000 \
     | tee "$LOG_ROOT/prefilter_hybrid/hybrid_thresholds_ef${SEARCH_EF}.txt"
 fi

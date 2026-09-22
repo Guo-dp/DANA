@@ -19,7 +19,7 @@
 
 ## 发布源码注意
 
-本发布仓库中的 `apps/static/query_multi_dsg_benchmark.cc` 和 `src/dsg.cc` 均与服务器正式实验归档哈希一致。后续开发版本若修改这些文件，应使用新的版本号和结果包，不能继续声明为本次正式结果对应源码。
+本报告保留原始实验审计结论。本次发布统一 DANA 名称与路径，当前源码哈希已改变，不能继续声称与历史实验逐字节一致。历史哈希保留于 provenance 与 audit.json，当前文件校验值见 SHA256SUMS；本次未重跑依赖原始 JSONL 的完整历史审计。
 
 ## 可用于论文的结论
 
@@ -29,4 +29,4 @@
 
 该审计不能用当前文件哈希倒推过去运行时的索引内容，也不代表五次独立建图。全部索引 SHA-256 可在开源归档时补充，但不影响本次对方法版本、评测规则、计时范围和结果可复算性的核验。
 
-机器可读报告：`results/external_baselines/dana_ema_reproducibility_audit_20260915.json`。
+机器可读历史报告：`reproducibility/audit.json`。

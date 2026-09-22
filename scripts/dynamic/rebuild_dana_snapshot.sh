@@ -21,11 +21,11 @@ mkdir -p "$LOG_DIR"
 
 echo "[1/3] Preparing attribute-ordered vectors"
 
-python3 scripts/prepare_multi_dsg_data.py \
+python3 scripts/prepare_dana_data.py \
   --base "$SNAPSHOT_DIR/base.snapshot.fbin" \
   --attrs "$SNAPSHOT_DIR/attrs.snapshot.csv" \
   --attr-count "$ATTR_COUNT" \
-  --output "$SNAPSHOT_DIR/multi_dsg"
+  --output "$SNAPSHOT_DIR/dana"
 
 echo "[2/3] Building per-attribute DSG indexes"
 
@@ -36,7 +36,7 @@ for ((attr=0; attr<ATTR_COUNT; ++attr)); do
     -dataset "rebuilt_attr${attr}" \
     -N "$N" \
     -dataset_path \
-      "$SNAPSHOT_DIR/multi_dsg/base.attr${attr}.fbin" \
+      "$SNAPSHOT_DIR/dana/base.attr${attr}.fbin" \
     -query_path "$QUERY_PATH" \
     -index_path "$INDEX_DIR/attr${attr}.dsg" \
     -k 16 \
@@ -46,7 +46,7 @@ for ((attr=0; attr<ATTR_COUNT; ++attr)); do
     | tee "$LOG_DIR/build_attr${attr}.log"
 
   cp \
-    "$SNAPSHOT_DIR/multi_dsg/rank_to_original.attr${attr}.ibin" \
+    "$SNAPSHOT_DIR/dana/rank_to_original.attr${attr}.ibin" \
     "$INDEX_DIR/rank_to_snapshot.attr${attr}.ibin"
 done
 

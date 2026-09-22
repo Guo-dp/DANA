@@ -1,24 +1,19 @@
-# Experiment Results Archive
+# Experiment Results
 
-`raw_logs.tar.gz` contains the complete synchronized `logs/` tree: 462 files from DEEP-1M/10M 96D, SIFT1M, BigVectorBench App-Reviews, synthetic workloads, routing ablations, baselines, and dynamic experiments.
+This compact artifact retains `ema_comparison/` paper operating points and five-run statistics, plus `followup_experiments/` logs and per-query outputs for controlled navigation-admission ablations and dynamic committed-state correctness audits. The complete historical log bundle and exploratory timing sweeps are excluded.
 
-Verify and extract:
+`followup_experiments/manifest.csv` records each retained file's relative path, byte count, SHA-256, and number of aggregate metric rows beginning with `all`.
+
+Verify the compact artifact from the repository root:
 
 ```bash
-sha256sum -c results/raw_logs.tar.gz.sha256 --ignore-missing
-mkdir -p reproduced_logs
-tar -xzf results/raw_logs.tar.gz -C reproduced_logs
+sha256sum -c reproducibility/SHA256SUMS
 ```
 
-`raw_logs_manifest.csv` contains:
+After intentional artifact changes, refresh checksums with:
 
-- `path`: path inside the archived `logs/` tree;
-- `bytes`: uncompressed file size;
-- `sha256`: file checksum;
-- `all_metric_lines`: number of aggregate metric rows beginning with `all`.
+```bash
+python3 scripts/update_reproducibility_hashes.py
+```
 
-The archive preserves raw output, including exploratory sweeps and timing runs affected by shared-server load. Paper timing summaries should use explicitly named clean/repeat directories and report the repeat count.
-
-`followup_experiments/` contains the compact logs and per-query outputs for
-the controlled navigation--admission ablation and the dynamic committed-state
-correctness audit added after the original synchronized archive.
+Historical audit hashes describe the original experiment snapshot. Current release hashes are recorded separately in `reproducibility/SHA256SUMS`. Names and paths in retained logs have been normalized to DANA; numerical measurements are unchanged. Full historical query JSONL inputs and large indexes are not bundled, so the historical full audit requires those external inputs.

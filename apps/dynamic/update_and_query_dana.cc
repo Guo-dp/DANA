@@ -18,7 +18,7 @@
 #include "base_hnsw/hnswlib.h"
 #include "data_wrapper.h"
 #include "dsg.h"
-#include "dynamic_multi_dsg.h"
+#include "dynamic_dana.h"
 #include "filter_query.h"
 
 namespace {
@@ -31,7 +31,6 @@ struct Config {
     std::string filter_path;
     std::string index_root;
     std::string reordered_data_root;
-    std::string stable_mapping_path;
 
     int data_size = 100000;
     int query_num = 300;
@@ -48,7 +47,6 @@ struct Config {
     unsigned seed = 2030;
     double rebuild_fraction = 0.05;
     std::string snapshot_dir;
-    unsigned original_base_size = 0;
     bool audit_correctness = false;
 };
 
@@ -63,6 +61,9 @@ struct EvalResult {
     double exact_ms = 0.0;
     double delta_scanned = 0.0;
     double base_candidates = 0.0;
+    double base_search_ms = 0.0;
+    double delta_scan_ms = 0.0;
+    double merge_ms = 0.0;
     std::size_t queries = 0;
     std::size_t audited_results = 0;
     std::size_t stale_version_violations = 0;
@@ -106,9 +107,6 @@ Config parseArgs(int argc, char **argv) {
         else if (arg == "-reordered_data_root")
             cfg.reordered_data_root =
                 value("-reordered_data_root");
-        else if (arg == "-stable_mapping_path")
-            cfg.stable_mapping_path =
-                value("-stable_mapping_path");
         else if (arg == "-attr_count")
             cfg.attr_count =
                 std::stoul(value("-attr_count"));
@@ -140,9 +138,6 @@ Config parseArgs(int argc, char **argv) {
                 std::stod(value("-rebuild_fraction"));
         else if (arg == "-snapshot_dir")
             cfg.snapshot_dir = value("-snapshot_dir");
-        else if (arg == "-original_base_size")
-            cfg.original_base_size =
-                std::stoul(value("-original_base_size"));
         else if (arg == "-audit_correctness")
             cfg.audit_correctness =
                 std::stoul(value("-audit_correctness")) != 0;
@@ -153,8 +148,7 @@ Config parseArgs(int argc, char **argv) {
         cfg.attr_path.empty() ||
         cfg.filter_path.empty() ||
         cfg.index_root.empty() ||
-        cfg.reordered_data_root.empty() ||
-        cfg.stable_mapping_path.empty()) {
+        cfg.reordered_data_root.empty()) {
         throw std::runtime_error(
             "Required paths are missing");
     }
@@ -317,7 +311,7 @@ namespace fs = std::filesystem;
 void exportSnapshot(
     const std::string &directory,
     const std::vector<
-        dsg::DynamicMultiDsgIndex::SnapshotPoint> &snapshot,
+        dsg::DynamicDanaIndex::SnapshotPoint> &snapshot,
     std::size_t dimension) {
 
     if (directory.empty()) {
@@ -470,7 +464,7 @@ void exportSnapshot(
 
 EvalResult evaluate(
     const std::string &phase,
-    dsg::DynamicMultiDsgIndex &index,
+    dsg::DynamicDanaIndex &index,
     const DataWrapper &data,
     const std::vector<FilterCase> &filters,
     unsigned eval_queries,
@@ -482,11 +476,11 @@ EvalResult evaluate(
     const std::unordered_set<unsigned> &deleted_ids) {
 
     EvalResult result;
-    std::vector<dsg::DynamicMultiDsgIndex::SnapshotPoint>
+    std::vector<dsg::DynamicDanaIndex::SnapshotPoint>
         committed_snapshot;
     std::unordered_map<
         unsigned,
-        const dsg::DynamicMultiDsgIndex::SnapshotPoint *>
+        const dsg::DynamicDanaIndex::SnapshotPoint *>
         committed_by_id;
 
     if (audit_correctness) {
@@ -494,8 +488,9 @@ EvalResult evaluate(
         committed_by_id.reserve(committed_snapshot.size());
 
         for (const auto &point : committed_snapshot) {
-            const auto inserted = committed_by_id.emplace(
-                point.original_id, &point);
+            const auto inserted =
+                committed_by_id.emplace(
+                    point.original_id, &point);
 
             if (!inserted.second) {
                 ++result.duplicate_id_violations;
@@ -510,8 +505,10 @@ EvalResult evaluate(
         }
 
         for (const unsigned id : updated_ids) {
-            if (committed_by_id.find(id) ==
-                committed_by_id.end()) {
+            const auto found = committed_by_id.find(id);
+
+            if (found == committed_by_id.end() ||
+                found->second->version == 0) {
                 ++result.updated_visibility_violations;
             }
         }
@@ -577,15 +574,15 @@ EvalResult evaluate(
                     ++result.duplicate_id_violations;
                 }
 
-                if (deleted_ids.find(id) !=
-                    deleted_ids.end()) {
-                    ++result.deleted_id_violations;
-                }
-
                 const auto found = committed_by_id.find(id);
 
                 if (found == committed_by_id.end()) {
-                    ++result.invalid_id_violations;
+                    if (deleted_ids.find(id) !=
+                        deleted_ids.end()) {
+                        ++result.deleted_id_violations;
+                    } else {
+                        ++result.invalid_id_violations;
+                    }
                     continue;
                 }
 
@@ -637,12 +634,39 @@ EvalResult evaluate(
         result.base_candidates +=
             index.lastStats().base_candidates;
 
+        result.base_search_ms +=
+            index.lastStats().base_search_ms;
+
+        result.delta_scan_ms +=
+            index.lastStats().delta_scan_ms;
+
+        result.merge_ms +=
+            index.lastStats().merge_ms;
+
         ++result.queries;
     }
 
     if (result.queries > 0) {
         const double denominator =
             static_cast<double>(result.queries);
+
+        const double average_approximate_ms =
+            result.approximate_ms / denominator;
+
+        const double average_base_search_ms =
+            result.base_search_ms / denominator;
+
+        const double average_delta_scan_ms =
+            result.delta_scan_ms / denominator;
+
+        const double average_merge_ms =
+            result.merge_ms / denominator;
+
+        const double other_ms =
+            average_approximate_ms -
+            average_base_search_ms -
+            average_delta_scan_ms -
+            average_merge_ms;
 
         std::cout
             << std::left << std::setw(18) << phase
@@ -651,12 +675,20 @@ EvalResult evaluate(
             << std::setprecision(4)
             << result.recall / denominator
             << " approx_ms="
-            << result.approximate_ms / denominator
+            << average_approximate_ms
             << " exact_ms="
             << result.exact_ms / denominator
             << " qps="
             << 1000.0 /
-                (result.approximate_ms / denominator)
+                average_approximate_ms
+            << " base_search_ms="
+            << average_base_search_ms
+            << " delta_scan_ms="
+            << average_delta_scan_ms
+            << " merge_ms="
+            << average_merge_ms
+            << " other_ms="
+            << other_ms
             << " base_candidates="
             << result.base_candidates / denominator
             << " delta_scanned="
@@ -671,7 +703,7 @@ EvalResult evaluate(
 
     if (audit_correctness) {
         std::cout
-            << "audit phase=post_rebuild"
+            << "audit phase=" << phase
             << " audited_results=" << result.audited_results
             << " stale_version_violations="
             << result.stale_version_violations
@@ -781,14 +813,11 @@ int main(int argc, char **argv) {
             owned_indexes.push_back(std::move(graph));
         }
 
-        const auto base_local_to_original =
-            readRankMapping(cfg.stable_mapping_path);
-
-        dsg::DynamicMultiDsgIndex dynamic_index(
+        dsg::DynamicDanaIndex dynamic_index(
             &data,
             index_ptrs,
             rank_to_original,
-            base_local_to_original,
+            {},
             cfg.rebuild_fraction);
 
         const auto filters =
@@ -799,25 +828,6 @@ int main(int argc, char **argv) {
         std::unordered_set<unsigned> inserted_ids;
         std::unordered_set<unsigned> updated_ids;
         std::unordered_set<unsigned> deleted_ids;
-
-        if (cfg.audit_correctness) {
-            if (cfg.original_base_size == 0) {
-                throw std::runtime_error(
-                    "original_base_size is required for correctness audit");
-            }
-
-            for (unsigned i = 0; i < cfg.insert_count; ++i) {
-                inserted_ids.insert(cfg.original_base_size + i);
-            }
-
-            for (unsigned i = 0; i < cfg.update_count; ++i) {
-                updated_ids.insert(i);
-            }
-
-            for (unsigned i = 0; i < cfg.delete_count; ++i) {
-                deleted_ids.insert(cfg.original_base_size - 1 - i);
-            }
-        }
 
         evaluate(
             "base",
@@ -832,9 +842,115 @@ int main(int argc, char **argv) {
             updated_ids,
             deleted_ids);
 
+        std::mt19937 random(cfg.seed);
+        std::uniform_real_distribution<float>
+            noise(-0.005F, 0.005F);
+
+        // 插入新点。
+        for (unsigned i = 0;
+             i < cfg.insert_count;
+             ++i) {
+            const unsigned source =
+                (i * 997U) %
+                static_cast<unsigned>(data.data_size);
+
+            std::vector<float> vector(data.data_dim);
+
+            for (std::size_t dim = 0;
+                 dim < data.data_dim;
+                 ++dim) {
+                vector[dim] =
+                    data.nodes[source][dim] +
+                    noise(random);
+            }
+
+            inserted_ids.insert(
+                dynamic_index.insert(
+                    vector.data(),
+                    attributesOf(data, source)));
+        }
+
+        evaluate(
+            "after_insert",
+            dynamic_index,
+            data,
+            filters,
+            cfg.eval_queries,
+            cfg.query_k,
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
+
+        // 修改Base点的属性。
+        for (unsigned i = 0;
+             i < cfg.update_count;
+             ++i) {
+            const unsigned target = i;
+            const unsigned attr_source =
+                (i + data.data_size / 2U) %
+                static_cast<unsigned>(data.data_size);
+
+            dynamic_index.updateAttributes(
+                target,
+                attributesOf(data, attr_source));
+            updated_ids.insert(target);
+        }
+
+        evaluate(
+            "after_update",
+            dynamic_index,
+            data,
+            filters,
+            cfg.eval_queries,
+            cfg.query_k,
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
+
+        // 删除Base尾部的点，避免与更新集合重叠。
+        for (unsigned i = 0;
+             i < cfg.delete_count;
+             ++i) {
+            const unsigned target =
+                static_cast<unsigned>(
+                    data.data_size - 1) - i;
+
+            dynamic_index.erase(target);
+            deleted_ids.insert(target);
+        }
+
+        evaluate(
+            "after_delete",
+            dynamic_index,
+            data,
+            filters,
+            cfg.eval_queries,
+            cfg.query_k,
+            cfg.search_ef,
+            cfg.audit_correctness,
+            inserted_ids,
+            updated_ids,
+            deleted_ids);
+
+        if (dynamic_index.needsRebuild() &&
+            !cfg.snapshot_dir.empty()) {
+
+            const auto snapshot =
+                dynamic_index.createSnapshot();
+
+            exportSnapshot(
+                cfg.snapshot_dir,
+                snapshot,
+                data.data_dim);
+        }
+
     } catch (const std::exception &error) {
         std::cerr
-            << "query_rebuilt_multi_dsg failed: "
+            << "update_and_query_dana failed: "
             << error.what() << "\n";
         return 1;
     }

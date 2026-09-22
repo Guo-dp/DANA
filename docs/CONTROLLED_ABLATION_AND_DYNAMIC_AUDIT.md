@@ -2,7 +2,7 @@
 
 ## Navigation--admission ablation
 
-`bridge` and `hard_prune` call the same `rangeSearchMultiDsg()` implementation.
+`bridge` and `hard_prune` call the same `rangeSearchDana()` implementation.
 The runner fixes the dataset, three DSG files, 1,000 queries, filters, adaptive
 route, `k=10`, and `search_ef=1024`, and alternates execution order across three
 runs.

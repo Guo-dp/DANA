@@ -21,12 +21,12 @@ Important executables include:
 
 ```text
 build_static_index
-query_multi_dsg_benchmark
+query_dana_benchmark
 build_hnsw_index
 query_hnsw_postfilter_benchmark
 query_hnsw_insearch_benchmark
-update_and_query_multi_dsg
-query_rebuilt_multi_dsg
+update_and_query_dana
+query_rebuilt_dana
 ```
 
 ## 2. Small Deterministic Validation
@@ -42,29 +42,29 @@ python3 scripts/verify_bundled_data.py
 Build one DSG per attribute and run the integrated query path:
 
 ```bash
-python3 scripts/prepare_multi_dsg_data_memmap.py \
+python3 scripts/prepare_dana_data_memmap.py \
   --base data/vector_calc_sanity/base.8.fbin \
   --attrs data/vector_calc_sanity/attrs.csv \
   --attr-count 3 \
-  --output data/vector_calc_sanity/multi_dsg \
+  --output data/vector_calc_sanity/dana \
   --chunk-rows 8
 
-mkdir -p index/static/vector_calc_sanity/multi_dsg
+mkdir -p index/static/vector_calc_sanity/dana
 for attr in 0 1 2; do
   ./build/apps/build_static_index \
     -dataset vector_calc_sanity_attr${attr} -N 8 \
-    -dataset_path data/vector_calc_sanity/multi_dsg/base.attr${attr}.fbin \
+    -dataset_path data/vector_calc_sanity/dana/base.attr${attr}.fbin \
     -query_path data/vector_calc_sanity/query.3.fbin \
-    -index_path index/static/vector_calc_sanity/multi_dsg/attr${attr}.dsg \
+    -index_path index/static/vector_calc_sanity/dana/attr${attr}.dsg \
     -k 4 -ef_construction 8 -ef_max 8 -alpha 1.0
 done
 
-./build/apps/query_multi_dsg_benchmark \
+./build/apps/query_dana_benchmark \
   -dataset vector_calc_sanity -N 8 \
   -dataset_path data/vector_calc_sanity/base.8.fbin \
   -query_path data/vector_calc_sanity/query.3.fbin \
-  -index_root index/static/vector_calc_sanity/multi_dsg \
-  -reordered_data_root data/vector_calc_sanity/multi_dsg \
+  -index_root index/static/vector_calc_sanity/dana \
+  -reordered_data_root data/vector_calc_sanity/dana \
   -attr_path data/vector_calc_sanity/attrs.csv \
   -attr_count 3 \
   -filter_path data/vector_calc_sanity/filters.csv \
@@ -135,20 +135,20 @@ python3 scripts/convert_bigvectorbench_hdf5.py \
 Prepare per-attribute rank order and build the three DSG indexes:
 
 ```bash
-python3 scripts/prepare_multi_dsg_data_memmap.py \
+python3 scripts/prepare_dana_data_memmap.py \
   --base data/bigvectorbench/app_reviews_384_converted/base.277936.fbin \
   --attrs data/bigvectorbench/app_reviews_384_converted/attrs.csv \
   --attr-count 3 \
-  --output data/bigvectorbench/app_reviews_384_converted/multi_dsg \
+  --output data/bigvectorbench/app_reviews_384_converted/dana \
   --chunk-rows 16384
 
-mkdir -p index/static/bigvectorbench_app_reviews/multi_dsg
+mkdir -p index/static/bigvectorbench_app_reviews/dana
 for attr in 0 1 2; do
   ./build/apps/build_static_index \
     -dataset bigvectorbench_app_reviews_attr${attr} -N 277936 \
-    -dataset_path data/bigvectorbench/app_reviews_384_converted/multi_dsg/base.attr${attr}.fbin \
+    -dataset_path data/bigvectorbench/app_reviews_384_converted/dana/base.attr${attr}.fbin \
     -query_path data/bigvectorbench/app_reviews_384_converted/query.10000.fbin \
-    -index_path index/static/bigvectorbench_app_reviews/multi_dsg/attr${attr}.dsg \
+    -index_path index/static/bigvectorbench_app_reviews/dana/attr${attr}.dsg \
     -k 16 -ef_construction 100 -ef_max 400 -alpha 1.0
 done
 ```
@@ -177,7 +177,7 @@ bash scripts/run_deep_dynamic_sweep.sh
 The runner evaluates update counts `1000 5000 10000 20000 50000`, records insert/update/delete stages, and checks the expected Delta size. For snapshot rebuilding:
 
 ```bash
-bash scripts/dynamic/rebuild_multi_dsg_snapshot.sh \
+bash scripts/dynamic/rebuild_dana_snapshot.sh \
   SNAPSHOT_DIR QUERY_PATH INDEX_DIR LOG_DIR ATTR_COUNT N
 ```
 
@@ -199,16 +199,9 @@ object counts. A value of zero means that no violation was detected. The exact
 control variables for the hard-pruning ablation and the audit-counter semantics
 are documented in `docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md`.
 
-## 6. Raw Logs And Verification
+## 6. Result Verification
 
-```bash
-sha256sum -c results/raw_logs.tar.gz.sha256 --ignore-missing
-mkdir -p reproduced_logs
-tar -xzf results/raw_logs.tar.gz -C reproduced_logs
-python3 scripts/summarize_deep_10m_results.py --help
-```
-
-`results/raw_logs_manifest.csv` lists every archived log and its SHA-256. It is the canonical inventory for the synchronized experiment evidence.
+Compact paper-point summaries, per-run statistics, audit outputs, and provenance manifests are retained under `results/` and `reproducibility/`. Large historical timing archives are intentionally excluded from the compact public artifact.
 
 ## 7. Timing Protocol
 

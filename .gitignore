@@ -23,7 +23,7 @@ Makefile
 /data/**/*.hdf5
 /data/**/*.h5
 /data/**/attrs.csv
-/data/**/multi_dsg/
+/data/**/dana/
 
 # Keep deterministic bundled validation data
 !/data/vector_calc_sanity/

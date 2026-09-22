@@ -1,4 +1,4 @@
-#include "dynamic_multi_dsg.h"
+#include "dynamic_dana.h"
 
 #include <algorithm>
 #include <chrono>
@@ -7,7 +7,7 @@
 
 namespace dsg {
 
-DynamicMultiDsgIndex::DynamicMultiDsgIndex(
+DynamicDanaIndex::DynamicDanaIndex(
     const DataWrapper *base_data,
     std::vector<DynamicSegmentGraph *> indexes,
     std::vector<std::vector<unsigned>> rank_to_base_local,
@@ -22,7 +22,7 @@ DynamicMultiDsgIndex::DynamicMultiDsgIndex(
 
     if (base_data_ == nullptr) {
         throw std::runtime_error(
-            "DynamicMultiDsgIndex requires base data");
+            "DynamicDanaIndex requires base data");
     }
 
     if (indexes_.empty() ||
@@ -77,7 +77,7 @@ DynamicMultiDsgIndex::DynamicMultiDsgIndex(
             : maximum_stable_id + 1;
 }
 
-unsigned DynamicMultiDsgIndex::insert(
+unsigned DynamicDanaIndex::insert(
     const float *vector,
     const std::vector<float> &attrs) {
 
@@ -87,7 +87,7 @@ unsigned DynamicMultiDsgIndex::insert(
     return original_id;
 }
 
-void DynamicMultiDsgIndex::insertWithId(
+void DynamicDanaIndex::insertWithId(
     unsigned original_id,
     const float *vector,
     const std::vector<float> &attrs) {
@@ -121,7 +121,7 @@ void DynamicMultiDsgIndex::insertWithId(
         std::max(next_original_id_, original_id + 1);
 }
 
-void DynamicMultiDsgIndex::update(
+void DynamicDanaIndex::update(
     unsigned original_id,
     const float *vector,
     const std::vector<float> &attrs) {
@@ -135,7 +135,7 @@ void DynamicMultiDsgIndex::update(
     insertWithId(original_id, vector, attrs);
 }
 
-void DynamicMultiDsgIndex::updateAttributes(
+void DynamicDanaIndex::updateAttributes(
     unsigned original_id,
     const std::vector<float> &attrs) {
 
@@ -161,7 +161,7 @@ void DynamicMultiDsgIndex::updateAttributes(
         attrs);
 }
 
-void DynamicMultiDsgIndex::erase(unsigned original_id) {
+void DynamicDanaIndex::erase(unsigned original_id) {
     delta_.erase(original_id);
 
     if (original_id <
@@ -170,7 +170,7 @@ void DynamicMultiDsgIndex::erase(unsigned original_id) {
     }
 }
 
-unsigned DynamicMultiDsgIndex::stableIdOfBaseLocal(
+unsigned DynamicDanaIndex::stableIdOfBaseLocal(
     unsigned base_local_id) const {
 
     if (base_local_id >=
@@ -182,7 +182,7 @@ unsigned DynamicMultiDsgIndex::stableIdOfBaseLocal(
     return base_local_to_original_[base_local_id];
 }
 
-bool DynamicMultiDsgIndex::deltaPassesFilter(
+bool DynamicDanaIndex::deltaPassesFilter(
     const DeltaPoint &point,
     const MultiRangeQuery &filter) const {
 
@@ -204,7 +204,7 @@ bool DynamicMultiDsgIndex::deltaPassesFilter(
     return true;
 }
 
-float DynamicMultiDsgIndex::squaredL2(
+float DynamicDanaIndex::squaredL2(
     const float *left,
     const float *right) const {
 
@@ -222,7 +222,7 @@ float DynamicMultiDsgIndex::squaredL2(
     return distance;
 }
 
-unsigned DynamicMultiDsgIndex::chooseNavigationAttribute(
+unsigned DynamicDanaIndex::chooseNavigationAttribute(
     const MultiRangeQuery &filter) const {
 
     unsigned best_attr = 0;
@@ -255,7 +255,7 @@ unsigned DynamicMultiDsgIndex::chooseNavigationAttribute(
     return best_attr;
 }
 
-std::vector<unsigned> DynamicMultiDsgIndex::search(
+std::vector<unsigned> DynamicDanaIndex::search(
     const float *query,
     const MultiRangeQuery &filter,
     unsigned top_k,
@@ -316,7 +316,7 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
             index->setSearchEf(
                 std::max(search_ef, requested));
 
-            index->rangeSearchMultiDsg(
+            index->rangeSearchDana(
                 query,
                 {static_cast<int>(rank_bound.first),
                  static_cast<int>(rank_bound.second)},
@@ -456,7 +456,7 @@ std::vector<unsigned> DynamicMultiDsgIndex::search(
     return result;
 }
 
-bool DynamicMultiDsgIndex::needsRebuild() const {
+bool DynamicDanaIndex::needsRebuild() const {
     // Count each changed original ID only once.
     std::size_t changed = base_tombstones_.size();
 
@@ -476,7 +476,7 @@ bool DynamicMultiDsgIndex::needsRebuild() const {
 }
 
 
-std::vector<unsigned> DynamicMultiDsgIndex::searchExact(
+std::vector<unsigned> DynamicDanaIndex::searchExact(
     const float *query,
     const MultiRangeQuery &filter,
     unsigned top_k) const {
@@ -560,8 +560,8 @@ std::vector<unsigned> DynamicMultiDsgIndex::searchExact(
 
 
 
-std::vector<DynamicMultiDsgIndex::SnapshotPoint>
-DynamicMultiDsgIndex::createSnapshot() const {
+std::vector<DynamicDanaIndex::SnapshotPoint>
+DynamicDanaIndex::createSnapshot() const {
 
     std::vector<SnapshotPoint> snapshot;
 

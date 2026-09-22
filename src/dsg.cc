@@ -907,7 +907,7 @@ void DynamicSegmentGraph::rangeSearch(const float *query,
     last_distance_eval_count_ = distance_eval_count;
 }
 
-void DynamicSegmentGraph::rangeSearchMultiDsg(
+void DynamicSegmentGraph::rangeSearchDana(
     const float *query,
     const std::pair<int, int> &query_bound,
     const MultiRangeQuery &filter,

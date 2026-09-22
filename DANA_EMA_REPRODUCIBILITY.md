@@ -4,7 +4,7 @@ This guide reproduces the static-query comparison between DANA and the explicitl
 
 ## Version Boundary
 
-The DANA source in this repository matches the archived source hashes used for the formal measurements. EMA is not vendored. Obtain it from [lmccccc/EMA](https://github.com/lmccccc/EMA), then apply the three patches under `scripts/baselines/`.
+This release normalizes DANA names and paths. Historical formal source hashes remain in provenance; current file hashes are in `reproducibility/SHA256SUMS` and differ after renaming. EMA is not vendored. Obtain it from [lmccccc/EMA](https://github.com/lmccccc/EMA), then apply the three patches under `scripts/baselines/`.
 
 The retained EMA checkout did not contain Git metadata, so no upstream commit is claimed. The pre-patch `hnswlib/hnswlib/hnswalg.h` used by the experiments had SHA-256:
 

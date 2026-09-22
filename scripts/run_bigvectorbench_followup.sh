@@ -15,7 +15,7 @@ set -Eeuo pipefail
 ROOT_DIR="${ROOT_DIR:-$(pwd)}"
 DATA_ROOT="${DATA_ROOT:-data/bigvectorbench/app_reviews_384_converted}"
 INDEX_ROOT="${INDEX_ROOT:-index/static/bigvectorbench_app_reviews}"
-DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/multi_dsg}"
+DSG_INDEX_ROOT="${DSG_INDEX_ROOT:-${INDEX_ROOT}/dana}"
 HNSW_INDEX="${HNSW_INDEX:-${INDEX_ROOT}/hnsw/M16.hnsw}"
 LOG_ROOT="${LOG_ROOT:-logs/bigvectorbench_app_reviews}"
 
@@ -23,7 +23,7 @@ BASE="${BASE:-${DATA_ROOT}/base.277936.fbin}"
 QUERY="${QUERY:-${DATA_ROOT}/query.10000.fbin}"
 ATTRS="${ATTRS:-${DATA_ROOT}/attrs.csv}"
 FILTERS="${FILTERS:-${DATA_ROOT}/filters.csv}"
-REORDER_ROOT="${REORDER_ROOT:-${DATA_ROOT}/multi_dsg}"
+REORDER_ROOT="${REORDER_ROOT:-${DATA_ROOT}/dana}"
 
 N="${N:-277936}"
 QUERY_NUM="${QUERY_NUM:-10000}"
@@ -76,7 +76,7 @@ if run_stage build_hnsw; then
 fi
 
 if run_stage dsg_high_ef; then
-  need_executable ./build/apps/query_multi_dsg_benchmark
+  need_executable ./build/apps/query_dana_benchmark
   for ef in 6144 8192; do
     log="$LOG_ROOT/query/dsg_ef${ef}.log"
     if [[ -s "$log" ]] && grep -q '^all' "$log"; then
@@ -84,7 +84,7 @@ if run_stage dsg_high_ef; then
       continue
     fi
     echo "===== BigVectorBench DANA ef=$ef ====="
-    ./build/apps/query_multi_dsg_benchmark \
+    ./build/apps/query_dana_benchmark \
       -dataset bigvectorbench_app_reviews \
       -N "$N" \
       -dataset_path "$BASE" \
@@ -156,7 +156,7 @@ if run_stage hnsw_insearch; then
 fi
 
 if run_stage indexed_attrs; then
-  need_executable ./build/apps/query_multi_dsg_benchmark
+  need_executable ./build/apps/query_dana_benchmark
   mkdir -p "$LOG_ROOT/query/indexed_attrs_ablation"
   for attrs in "0" "1" "0,1" "0,1,2"; do
     safe="${attrs//,/}"
@@ -166,7 +166,7 @@ if run_stage indexed_attrs; then
       continue
     fi
     echo "===== indexed attrs=$attrs ef=4096 ====="
-    ./build/apps/query_multi_dsg_benchmark \
+    ./build/apps/query_dana_benchmark \
       -dataset bigvectorbench_app_reviews \
       -N "$N" \
       -dataset_path "$BASE" \

@@ -4,7 +4,7 @@ set -uo pipefail
 ROOT="$HOME/snap/VD/DRFA/Dynamic-Range-Filtering-ANNS-release_version"
 cd "$ROOT" || exit 1
 
-APP="./build/apps/update_and_query_multi_dsg"
+APP="./build/apps/update_and_query_dana"
 LOG_ROOT="logs/deep_multi_independent/dynamic"
 
 if [ ! -x "$APP" ]; then
@@ -35,8 +35,8 @@ for count in "${COUNTS[@]}"; do
       -attr_path data/deep/multiattr_independent/attrs.csv \
       -attr_count 3 \
       -filter_path data/deep/multiattr_independent/filters.multi_only.csv \
-      -index_root index/static/deep_multi_independent/multi_dsg \
-      -reordered_data_root data/deep/multiattr_independent/multi_dsg \
+      -index_root index/static/deep_multi_independent/dana \
+      -reordered_data_root data/deep/multiattr_independent/dana \
       -query_num 100 \
       -query_k 10 \
       -search_ef 1024 \

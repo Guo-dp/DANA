@@ -1,11 +1,11 @@
 Load vecs from: data/deep_1m_96d/base.1M.96d.fbin
 # of vecs: 1000000
 indexed_attributes attr0 attr1 attr2
-Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr0.fbin
+Load vecs from: data/deep_1m_96d/multiattr_independent/dana/base.attr0.fbin
 # of vecs: 1000000
-Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr1.fbin
+Load vecs from: data/deep_1m_96d/multiattr_independent/dana/base.attr1.fbin
 # of vecs: 1000000
-Load vecs from: data/deep_1m_96d/multiattr_independent/multi_dsg/base.attr2.fbin
+Load vecs from: data/deep_1m_96d/multiattr_independent/dana/base.attr2.fbin
 # of vecs: 1000000
 selected_attributes attr0=500 attr1=250 attr2=250
 search_ef=1024 nav_mode=adaptive admission_mode=bridge

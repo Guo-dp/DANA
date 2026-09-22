@@ -14,6 +14,8 @@ jobs:
           python-version: "3.11"
       - name: Install smoke-test dependency
         run: python -m pip install numpy
+      - name: Verify artifact checksums
+        run: sha256sum -c reproducibility/SHA256SUMS
       - name: Validate Python and bundled data
         run: |
           python -m compileall -q scripts analysis
@@ -24,36 +26,35 @@ jobs:
           cmake --build build -j 2
       - name: Build deterministic DSG indexes
         run: |
-          python scripts/prepare_multi_dsg_data_memmap.py \
+          python scripts/prepare_dana_data_memmap.py \
             --base data/vector_calc_sanity/base.8.fbin \
             --attrs data/vector_calc_sanity/attrs.csv \
             --attr-count 3 \
-            --output data/vector_calc_sanity/multi_dsg \
+            --output data/vector_calc_sanity/dana \
             --chunk-rows 8
-          mkdir -p index/static/vector_calc_sanity/multi_dsg
+          mkdir -p index/static/vector_calc_sanity/dana
           for attr in 0 1 2; do
             ./build/apps/build_static_index \
               -dataset vector_calc_sanity_attr${attr} \
               -N 8 \
-              -dataset_path data/vector_calc_sanity/multi_dsg/base.attr${attr}.fbin \
+              -dataset_path data/vector_calc_sanity/dana/base.attr${attr}.fbin \
               -query_path data/vector_calc_sanity/query.3.fbin \
-              -index_path index/static/vector_calc_sanity/multi_dsg/attr${attr}.dsg \
+              -index_path index/static/vector_calc_sanity/dana/attr${attr}.dsg \
               -k 4 -ef_construction 8 -ef_max 8 -alpha 1.0
           done
       - name: Run integrated DANA smoke test
         run: |
-          ./build/apps/query_multi_dsg_benchmark \
+          ./build/apps/query_dana_benchmark \
             -dataset vector_calc_sanity \
             -N 8 \
             -dataset_path data/vector_calc_sanity/base.8.fbin \
             -query_path data/vector_calc_sanity/query.3.fbin \
-            -index_root index/static/vector_calc_sanity/multi_dsg \
-            -reordered_data_root data/vector_calc_sanity/multi_dsg \
+            -index_root index/static/vector_calc_sanity/dana \
+            -reordered_data_root data/vector_calc_sanity/dana \
             -attr_path data/vector_calc_sanity/attrs.csv \
             -attr_count 3 \
             -filter_path data/vector_calc_sanity/filters.csv \
             -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive \
             | tee smoke.log
           grep -Eq '^all[[:space:]]+queries=3 recall=1\.0000' smoke.log
-
 

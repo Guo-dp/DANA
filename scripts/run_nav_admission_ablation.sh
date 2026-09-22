@@ -14,13 +14,13 @@ run_one() {
   local mode="$2"
   local stem="$LOG_ROOT/${mode}_ef${EF}_run${run}"
 
-  ./build/apps/query_multi_dsg_benchmark \
+  ./build/apps/query_dana_benchmark \
     -dataset deep_10m_96d \
     -N 10000000 \
     -dataset_path data/deep/base.10M.fbin \
     -query_path data/deep/query.public.10K.fbin \
-    -index_root index/static/deep_10m_96d/multi_dsg \
-    -reordered_data_root data/deep_10m_96d/multiattr_independent/multi_dsg \
+    -index_root index/static/deep_10m_96d/dana \
+    -reordered_data_root data/deep_10m_96d/multiattr_independent/dana \
     -attr_path data/deep_10m_96d/multiattr_independent/attrs.csv \
     -attr_count 3 \
     -filter_path data/deep_10m_96d/multiattr_independent/filters.multi_only.csv \

@@ -28,8 +28,8 @@ LOCAL_HASH_TARGETS = {
     "baselines/ema_external.py": ROOT / "scripts/baselines/ema_external.py",
     "baselines/dana_external.cpp": ROOT / "scripts/baselines/dana_external.cpp",
     "baselines/evaluate_external.py": ROOT / "scripts/baselines/evaluate_external.py",
-    "apps/static/query_multi_dsg_benchmark.cc":
-        ROOT / "apps/static/query_multi_dsg_benchmark.cc",
+    "apps/static/query_dana_benchmark.cc":
+        ROOT / "apps/static/query_dana_benchmark.cc",
     "src/dsg.cc": ROOT / "src/dsg.cc",
 }
 
@@ -392,7 +392,7 @@ def main() -> None:
 
 ## 发布源码注意
 
-本发布仓库中的 `apps/static/query_multi_dsg_benchmark.cc` 和 `src/dsg.cc` 均与服务器正式实验归档哈希一致。后续开发版本若修改这些文件，应使用新的版本号和结果包，不能继续声明为本次正式结果对应源码。
+本发布仓库中的 `apps/static/query_dana_benchmark.cc` 和 `src/dsg.cc` 均与服务器正式实验归档哈希一致。后续开发版本若修改这些文件，应使用新的版本号和结果包，不能继续声明为本次正式结果对应源码。
 
 ## 可用于论文的结论
 

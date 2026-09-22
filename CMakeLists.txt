@@ -50,7 +50,7 @@ add_subdirectory(src/utils)
 
 add_library(dsg_core STATIC
     src/dsg.cc
-    src/dynamic_multi_dsg.cc
+    src/dynamic_dana.cc
 )
 target_include_directories(dsg_core PRIVATE
     ${PROJECT_SOURCE_DIR}/include
