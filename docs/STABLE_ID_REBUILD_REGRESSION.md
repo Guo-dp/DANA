@@ -58,6 +58,30 @@ violations, and incorrect Base/Delta source versions. ANN Recall is printed
 separately and is not a state-correctness pass condition. Success ends with
 `ALL PASS independent_operation_replay`. The same test runs in Linux CI.
 
+## Observed server result (2026-10-01)
+
+The regression passed on `gpu02` with GNU C++ 13.3.0, a Release build, and
+`OMP_NUM_THREADS=1`. The complete output is archived in
+[`server.log`](../results/stable_id_rebuild/server.log).
+
+| Phase | Live objects | Next allocated ID | Exact queries | ANN Recall@10 |
+| --- | ---: | ---: | ---: | ---: |
+| Initial Base | 1000 | 1000 | 40 | 1.000000 |
+| Round 1 mutations | 910 | 1012 | 40 | 1.000000 |
+| Round 1 rebuilt/reloaded | 910 | 1012 | 40 | 1.000000 |
+| Round 2 mutations | 908 | 1013 | 40 | 1.000000 |
+| Round 2 rebuilt/reloaded | 908 | 1013 | 40 | 0.995000 |
+| Insert after second rebuild | 909 | 1014 | 40 | 0.995000 |
+
+The two focused sparse-ID cases add 80 exact queries, for 320 independently
+checked exact queries in total. All matched the operation-replay reference.
+All snapshot content and allocator checks passed, and ANN result state/source
+violations were zero. The approximate misses above are reported separately;
+the test does not claim that state correctness implies perfect ANN Recall.
+Nine actual attribute DSGs were built, saved, and reloaded across the initial
+Base and the two rebuilds. This is a correctness regression, not a performance
+benchmark or evidence for post-capture replay.
+
 ## Existing measurements and scope
 
 The static query implementation, DSG build algorithm, navigation policy, and

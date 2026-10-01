@@ -328,8 +328,9 @@ std::unique_ptr<Bundle> reload(const fs::path &root, Reference &reference) {
     std::ifstream mapping(root / "snapshot_to_original.ibin", std::ios::binary);
     std::uint32_t count = 0;
     mapping.read(reinterpret_cast<char *>(&count), 4);
-    DataWrapper data(0, 10, "snapshot_reload", count);
-    std::string vectors = (root / "base.snapshot.fbin").string(), queries;
+    DataWrapper data(1, 10, "snapshot_reload", count);
+    std::string vectors = (root / "base.snapshot.fbin").string();
+    std::string queries = vectors; // Query probes below are generated independently.
     data.readData(vectors, queries);
     data.readAttributes((root / "attrs.snapshot.csv").string(), 3);
     std::map<unsigned, Point> actual;

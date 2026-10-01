@@ -1,0 +1,89 @@
+STATE PASS phase=sparse_base_delete_id3 points=2 next_id=4
+QUERY PASS phase=sparse_base_delete_id3 exact_queries=40
+STATE PASS phase=repeated_update_latest_only points=2 next_id=4
+STATE PASS phase=updated_and_inserted_deleted points=1 next_id=5
+STATE PASS phase=high_stable_id_attributes_preserve_vector points=3 next_id=9001
+QUERY PASS phase=high_stable_id_attributes exact_queries=40
+STATE PASS phase=high_base_update_then_delete points=2 next_id=9001
+STATE PASS phase=deleted_max_id_not_reused points=3 next_id=9002
+UNIT PASS sparse/delete/update/attributes/repeated/allocator/overflow
+[DSG] Temporary HNSW built in 0.0166311 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2890/36654 (7.88454%), protected_edges=2834 (|nbr-center| <= 20), score=support/|nbr-center|, time=0.00112106 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.0104212 s
+  DFS Compress: 0.0275125 s
+  Store Edges: 0.0010806 s
+[DSG] Temporary HNSW built in 0.015183 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2745/35226 (7.79254%), protected_edges=2802 (|nbr-center| <= 20), score=support/|nbr-center|, time=0.00110107 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.00991551 s
+  DFS Compress: 0.0291782 s
+  Store Edges: 0.000612202 s
+[DSG] Temporary HNSW built in 0.0152918 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2620/33908 (7.72679%), protected_edges=2750 (|nbr-center| <= 20), score=support/|nbr-center|, time=0.00102161 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.0100148 s
+  DFS Compress: 0.0284158 s
+  Store Edges: 0.000609202 s
+QUERY PASS phase=initial_1000 exact_queries=40 ann_recall=1.000000 state_violations=0
+STATE PASS phase=round1_mutations points=910 next_id=1012
+QUERY PASS phase=round1_mutations exact_queries=40 ann_recall=1.000000 state_violations=0
+Load vecs from: regression_data/round1/base.snapshot.fbin
+# of vecs: 910
+[DSG] Temporary HNSW built in 0.013035 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2624/33430 (7.849237%), protected_edges=2650 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.001015 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009788 s
+  DFS Compress: 0.025288 s
+  Store Edges: 0.000607 s
+[DSG] Temporary HNSW built in 0.012725 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2490/31870 (7.812990%), protected_edges=2708 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.001001 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009303 s
+  DFS Compress: 0.026397 s
+  Store Edges: 0.000641 s
+[DSG] Temporary HNSW built in 0.012779 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2363/30504 (7.746525%), protected_edges=2658 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.000919 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009447 s
+  DFS Compress: 0.025965 s
+  Store Edges: 0.000584 s
+STATE PASS phase=round1_reloaded points=910 next_id=1012
+QUERY PASS phase=round1_reloaded exact_queries=40 ann_recall=1.000000 state_violations=0
+STATE PASS phase=round2_mutations points=908 next_id=1013
+QUERY PASS phase=round2_mutations exact_queries=40 ann_recall=1.000000 state_violations=0
+Load vecs from: regression_data/round2/base.snapshot.fbin
+# of vecs: 908
+[DSG] Temporary HNSW built in 0.013027 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2641/33564 (7.868550%), protected_edges=2674 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.001022 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009439 s
+  DFS Compress: 0.025414 s
+  Store Edges: 0.000584 s
+[DSG] Temporary HNSW built in 0.012592 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2478/31800 (7.792453%), protected_edges=2716 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.000985 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009272 s
+  DFS Compress: 0.026279 s
+  Store Edges: 0.000569 s
+[DSG] Temporary HNSW built in 0.012677 seconds.
+[DSG] Build-time support prune: using distance-weighted score support/|nbr-center|
+[DSG] Build-time support prune (per node, bottom 10% of prunable edges): pruned=2340/30302 (7.722263%), protected_edges=2640 (|nbr-center| <= 19), score=support/|nbr-center|, time=0.000905 s
+[DSG] Detailed breakdown:
+  KNN Search: 0.009389 s
+  DFS Compress: 0.025733 s
+  Store Edges: 0.000582 s
+STATE PASS phase=round2_reloaded points=908 next_id=1013
+QUERY PASS phase=round2_reloaded exact_queries=40 ann_recall=0.995000 state_violations=0
+STATE PASS phase=post_second_rebuild_insert points=909 next_id=1014
+QUERY PASS phase=post_second_rebuild_insert exact_queries=40 ann_recall=0.995000 state_violations=0
+REBUILD PASS initial=1000 attributes=3 rounds=2 state_violations=0
+ALL PASS independent_operation_replay
