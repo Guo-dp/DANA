@@ -1,0 +1,22 @@
+{
+  "campaign": "deep10m_default_5pct_rebuild_20260917",
+  "dataset": "DEEP-10M",
+  "vectors": 10000000,
+  "dimension": 96,
+  "attribute_count": 3,
+  "query_count_per_run": 1000,
+  "query_k": 10,
+  "search_ef": 1024,
+  "seed": 2031,
+  "rebuild_fraction": 0.05,
+  "operation_counts": {"insert": 166667, "update": 166667, "delete": 166667},
+  "aggregation": "query-weighted mean latency; QPS=1000/mean latency; all three rebuilt runs retained",
+  "original_log_sha256": {
+    "dynamic_and_snapshot.log": "0618664008abdbf5035984d468463f6ff9863145fe0abc023e9386957f38bd58",
+    "query_rebuilt_run1.log": "65557ea01dfcfe4e9480635a74ac5a1bbc3094eb4db3e542cd035e702d1e07f3",
+    "query_rebuilt_run2.log": "2463256370df8f439d6d88f1d0c019a8e7332a6e6e2728228d4cc6161b5ace9a",
+    "query_rebuilt_run3.log": "f0d2d5ead0bc9319070da180110c153afdc7ef0ff807b764d52c1c950be6aa8e"
+  },
+  "retained_records": "Metric-only excerpts; original logs remain unchanged outside the public artifact.",
+  "historical_version_scope": "These measurements precede the stable-ID maintenance regression fix included in the current artifact. They query committed snapshots and do not test continued updates after rebuilding."
+}

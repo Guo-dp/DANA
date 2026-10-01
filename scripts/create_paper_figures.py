@@ -10,6 +10,8 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Circle
 from matplotlib.lines import Line2D
 import numpy as np
 
+from dynamic_cycle_data import load_dynamic_cycle
+
 
 OUT = Path(__file__).resolve().parents[1] / "paper_figures"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -1188,12 +1190,14 @@ def fig_app_routing_v2():
 
 
 def fig_dynamic_evidence_v2():
-    """Figure 7: growth cost, phase attribution, and rebuild recovery."""
+    """Figure 6: growth cost, phase attribution, and default-threshold recovery."""
     delta = np.array([0, 10, 20, 40, 50, 100, 200])
     latency = np.array([10.1345, 10.4959, 10.8661, 10.3740, 11.9353, 22.1365, 27.3521])
     phases = np.array([[8.2247, 0.0002, 0.0030], [8.1576, 5.5674, 0.0569], [12.1005, 7.1490, 0.1236]])
     dstate = ["0", "50K", "100K"]
-    recovery = [77.7, 417.8]
+    cycle = load_dynamic_cycle()
+    recovery = [cycle[3], cycle[4]]
+    recovery_qps = [row["qps"] for row in recovery]
     fig = plt.figure(figsize=(7.0, 2.75))
     gs = fig.add_gridspec(1, 3, width_ratios=[1.28, 1.05, 0.78], wspace=0.48)
     ax1, ax2, ax3 = [fig.add_subplot(gs[0, i]) for i in range(3)]
@@ -1218,22 +1222,34 @@ def fig_dynamic_evidence_v2():
     ax2.set_title("b  Query-cost source", loc="left", fontsize=8.2, weight="bold", pad=7)
     ax2.legend(loc="upper left", bbox_to_anchor=(0.0, 0.91), fontsize=6.6,
                frameon=False, handlelength=1.0)
-    bars = ax3.bar([0, 1], recovery, color=[COLORS["orange"], COLORS["blue"]],
+    bars = ax3.bar([0, 1], recovery_qps, color=[COLORS["orange"], COLORS["blue"]],
                    edgecolor="#252525", lw=0.7, width=0.62)
-    ax3.set_xticks([0, 1], ["Before", "After"])
+    ax3.set_xticks([0, 1], [f"{label}\nr={row['recall']:.4f}"
+                          for label, row in zip(("Before", "After"), recovery)])
     ax3.set_ylabel("QPS")
-    ax3.set_ylim(0, 490)
+    ax3.set_ylim(0, max(recovery_qps) * 1.3)
     ax3.set_title("c  Rebuild recovery", loc="left", fontsize=8.2, weight="bold", pad=7)
-    for bar, value in zip(bars, recovery):
-        ax3.text(bar.get_x() + bar.get_width()/2, value + 10,
-                 f"{value:.1f}", ha="center", va="bottom",
+    for bar, value in zip(bars, recovery_qps):
+        ax3.text(bar.get_x() + bar.get_width()/2, value + max(recovery_qps) * 0.04,
+                 f"{value:.2f}", ha="center", va="bottom",
                  fontsize=7.2, color=COLORS["dark"])
+    ax4 = ax3.twinx()
+    recovery_latency = [row["approx_ms"] for row in recovery]
+    ax4.plot([0, 1], recovery_latency, color=COLORS["dark"], marker="o", lw=1.2, ms=3)
+    ax4.set_ylabel("Latency (ms)", fontsize=7.2)
+    ax4.set_ylim(0, max(recovery_latency) * 1.35)
+    ax4.tick_params(labelsize=7.2)
+    ax4.spines["top"].set_visible(False)
+    for i, value in enumerate(recovery_latency):
+        ax4.annotate(f"{value:.2f}", (i, value), xytext=(0, 7),
+                     textcoords="offset points", ha="center", fontsize=6.9,
+                     bbox=dict(facecolor="white", edgecolor="none", pad=0.5))
     for ax in (ax1, ax2, ax3):
         ax.grid(False)
         ax.tick_params(labelsize=7.2)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-    fig.subplots_adjust(left=0.08, right=0.99, bottom=0.22, top=0.95)
+    fig.subplots_adjust(left=0.08, right=0.92, bottom=0.22, top=0.88)
     save(fig, "fig_dynamic_growth")
 
 

@@ -4,6 +4,8 @@ DANA extends one-dimensional Dynamic Segment Graphs to conjunctive multi-attribu
 
 This repository contains the reproducibility artifact and subsequent maintenance fixes. It includes C++ source, workload generators, benchmark drivers, compact workload definitions, validation datasets, paper-point summaries, and audit metadata. Historical experiment source hashes and current release checksums are recorded separately under `reproducibility/`. Public vectors and generated indexes are intentionally excluded because they are large and redistributability varies.
 
+The frozen submission artifact is [paper-artifact-v3](https://github.com/Guo-dp/DANA/tree/paper-artifact-v3). It includes stable-ID maintenance after snapshot rebuilds and the DEEP-10M default-threshold recovery source data for Table 9 / Figure 6(c). Earlier artifact tags remain unchanged.
+
 ## Method Scope
 
 DANA combines attribute-specific one-dimensional DSG indexes while retaining each index's one-dimensional edge-label semantics. Conjunctive filtering is implemented by navigation-attribute selection plus in-search result admission.
@@ -20,6 +22,7 @@ DANA combines attribute-specific one-dimensional DSG indexes while retaining eac
 - `scripts/baselines/`: DANA/EMA adapters, EMA-FTFix-V2 patches, shared evaluator, and comparison runner.
 - `configs/dana_ema_paper.json`: frozen search grids and selected paper operating points.
 - `results/ema_comparison/`: compact DANA/EMA paper points and five-run summaries.
+- `results/dynamic_deep10m/`: default-threshold dynamic-cycle records, run-level measurements and generated Table 9 data.
 - `reproducibility/`: audit report and artifact-manifest template.
 
 ## Quick Start

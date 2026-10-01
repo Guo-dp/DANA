@@ -4,12 +4,12 @@
  * @brief Dynamic Segment Graph (DSG) header. Rebuilt from compact_graph.h
  * @details This header declares the Dynamic Segment Graph, an implementation that first builds a temporary HNSW,
  *          runs ef_max-sized neighbor searches for every node, applies a DFS-based compression over the neighbors,
- *          and stores only forward segment edges (reverse edges and insertions will be implemented later).
+ *          and stores compressed forward segment edges.
  *          The class inherits `BaseIndex` so it can plug into the existing indexing/search pipeline while exposing
  *          range-filtering queries over compressed segment neighbors. The file introduces the basic data structures
  *          (segment edges, per-node containers, DFS scratch buffers) together with the public API needed for building,
- *          querying, and persisting the DSG index. Insert/update workflows are intentionally omitted in this version
- *          and will be added after the core rebuild is complete.
+ *          querying, persisting, and inserting into the DSG's ordered label space. Stable-ID insert/update/delete
+ *          maintenance is provided separately by DynamicDanaIndex through Base/Delta/Tombstone and snapshot rebuilds.
  */
 
 #pragma once

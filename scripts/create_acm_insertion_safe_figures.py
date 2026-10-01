@@ -16,6 +16,8 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Circle, FancyArrowPatch, FancyBboxPatch, Rectangle
 from matplotlib.ticker import FuncFormatter, FixedLocator
 
+from dynamic_cycle_data import load_dynamic_cycle
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "paper" / "figures"
@@ -676,6 +678,8 @@ def figure_attribute_scaling() -> None:
 
 
 def figure_dynamic_maintenance() -> None:
+    cycle = load_dynamic_cycle()
+    recovery = [cycle[3], cycle[4]]
     delta = np.array([0, 10, 20, 40, 50, 100, 200])
     latency = np.array([10.1345, 10.4959, 10.8661, 10.3740, 11.9353, 22.1365, 27.3521])
     qps = np.array([98.7, 95.3, 92.0, 96.4, 83.8, 45.2, 36.6])
@@ -762,34 +766,33 @@ def figure_dynamic_maintenance() -> None:
 
     ax = panel_axes(fig, bottom_rect, left=0.08, right=0.08, bottom=0.25, top=0.20)
     states = np.array([0, 1])
-    recovery_qps = np.array([77.7, 417.8])
-    recovery_latency = np.array([12.8665, 2.3936])
+    recovery_qps = np.array([row["qps"] for row in recovery])
+    recovery_latency = np.array([row["approx_ms"] for row in recovery])
     bars = ax.bar(states, recovery_qps, width=0.46, color=BLUE, edgecolor=BLACK,
                   linewidth=0.6, label="QPS", zorder=2)
-    ax.set_xticks(states, ["Before rebuild\nRecall = 0.9980",
-                           "After rebuild\nRecall = 0.9987"])
+    ax.set_xticks(states, [f"{label} rebuild\nRecall = {row['recall']:.4f}"
+                           for label, row in zip(("Before", "After"), recovery)])
     ax.set_ylabel("QPS", color=BLUE_DARK, labelpad=4)
-    ax.set_ylim(0, 470)
+    ax.set_ylim(0, max(recovery_qps) * 1.25)
     ax.tick_params(axis="y", labelcolor=BLUE_DARK)
     ax2 = ax.twinx()
-    ax2.plot(states, recovery_latency, color=ORANGE, marker="o", linewidth=1.4,
-             markersize=4.0, label="Latency", zorder=3)
+    recovery_line, = ax2.plot(states, recovery_latency, color=ORANGE, marker="o", linewidth=1.4,
+                             markersize=4.0, label="Latency", zorder=3)
     ax2.set_ylabel("Latency (ms)", color=ORANGE, labelpad=4)
-    ax2.set_ylim(1.5, 14.0)
+    ax2.set_ylim(0, max(recovery_latency) * 1.35)
     ax2.tick_params(axis="y", labelcolor=ORANGE)
     ax2.spines["top"].set_visible(False)
     for i, (bar, q, lat) in enumerate(zip(bars, recovery_qps, recovery_latency)):
-        ax.text(bar.get_x() + bar.get_width() / 2, q + 12,
-                f"{q:.1f}", ha="center", va="bottom", fontsize=7.2)
+        ax.text(bar.get_x() + bar.get_width() / 2, q + max(recovery_qps) * 0.04,
+                f"{q:.2f}", ha="center", va="bottom", fontsize=7.2)
         y_offset = 8 if i == 0 else 8
         ax2.annotate(f"{lat:.2f} ms", (i, lat), xytext=(0, y_offset),
                      textcoords="offset points", ha="center", va="bottom",
                      fontsize=7.1, color=ORANGE,
                      bbox=dict(boxstyle="round,pad=0.12", fc="white", ec="none",
                                alpha=0.90), zorder=6)
-    ax.legend(loc="upper left", frameon=False, handlelength=1.2)
-    ax2.legend(loc="upper left", bbox_to_anchor=(0.10, 1.0), frameon=False,
-               handlelength=1.2)
+    ax.legend([bars, recovery_line], ["QPS", "Latency"], loc="upper center",
+              frameon=False, handlelength=1.2, ncol=2)
     export(fig, "fig_dynamic_growth")
 
 
