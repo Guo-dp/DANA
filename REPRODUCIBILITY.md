@@ -268,6 +268,17 @@ object counts. A value of zero means that no violation was detected. The exact
 control variables for the hard-pruning ablation and the audit-counter semantics
 are documented in `docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md`.
 
+For continued mutations after compaction, run the independent stable-ID
+regression and its 1,000-point, three-attribute, two-rebuild integration case:
+
+```bash
+cmake --build build -j 2 --target test_dynamic_stable_ids
+OMP_NUM_THREADS=1 ./build/apps/test_dynamic_stable_ids /tmp/dana-stable-id-test
+```
+
+See `docs/STABLE_ID_REBUILD_REGRESSION.md` for the reference model, saved ID
+allocation high-water mark, legacy-snapshot boundary, and manuscript scope.
+
 ## 6. Result Verification
 
 Compact paper-point summaries, per-run statistics, audit outputs, and provenance manifests are retained under `results/` and `reproducibility/`. Large historical timing archives are intentionally excluded from the compact public artifact.
@@ -293,4 +304,3 @@ Regenerate the five-run variability table with:
 ```bash
 python3 scripts/baselines/summarize_repetition_variability.py
 ```
-

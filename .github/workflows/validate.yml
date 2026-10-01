@@ -42,6 +42,10 @@ jobs:
               -index_path index/static/vector_calc_sanity/dana/attr${attr}.dsg \
               -k 4 -ef_construction 8 -ef_max 8 -alpha 1.0
           done
+      - name: Audit stable IDs through two real rebuilds
+        run: |
+          OMP_NUM_THREADS=1 ./build/apps/test_dynamic_stable_ids "$RUNNER_TEMP/dana-stable-id-rebuild" | tee stable-id-test.log
+          grep -q '^ALL PASS independent_operation_replay' stable-id-test.log
       - name: Run integrated DANA smoke test
         run: |
           ./build/apps/query_dana_benchmark \
@@ -57,4 +61,3 @@ jobs:
             -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive \
             | tee smoke.log
           grep -Eq '^all[[:space:]]+queries=3 recall=1\.0000' smoke.log
-
