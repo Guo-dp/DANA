@@ -1,6 +1,6 @@
 # Stable IDs After Snapshot Rebuild
 
-## Defect and repair
+## Stable-ID handling after compaction
 
 After compaction, Base row numbers and stable IDs can differ. With stable IDs
 `{0, 2, 3}`, the Base contains three rows, but stable ID `3` is still a Base
@@ -31,7 +31,7 @@ an explicit-ID upsert/import API; the caller controls its ID namespace.
 
 The test uses its own ordered map of ID, vector, and attributes and applies
 operations to that map independently. DANA snapshots are compared against this
-reference; they are never used to generate expected query answers. Checks use
+reference; expected query answers are computed directly from that reference. Checks use
 exceptions rather than `assert`, so Release builds execute all checks.
 
 ```bash
@@ -77,7 +77,7 @@ The two focused sparse-ID cases add 80 exact queries, for 320 independently
 checked exact queries in total. All matched the operation-replay reference.
 All snapshot content and allocator checks passed, and ANN result state/source
 violations were zero. The approximate misses above are reported separately;
-the test does not claim that state correctness implies perfect ANN Recall.
+state checks and ANN Recall are evaluated as separate criteria.
 Nine actual attribute DSGs were built, saved, and reloaded across the initial
 Base and the two rebuilds. This is a correctness regression, not a performance
 benchmark.
@@ -88,10 +88,12 @@ The static query implementation, DSG build algorithm, navigation policy, and
 distance function are unchanged by this patch. Historical dynamic measurements
 on the initial identity-mapped Base perform the same live-object operations.
 Historical post-rebuild measurements only query the reloaded Base; they do not
-exercise the previously faulty subsequent mutations. This repair does not by
-itself invalidate those query measurements, but the additional reverse-map
-memory and initialization cost were not measured in them. No updated timing
-or peak-RSS claim is made by this correctness regression.
+exercise subsequent mutations after reloading. The changed mutation paths are
+therefore outside those historical post-rebuild query measurements. The
+additional reverse-map memory and initialization cost are not included in
+those historical measurements. This regression reports state correctness;
+timing and peak-RSS measurements remain associated with their recorded source
+versions.
 
 The validated workflow is sequential: apply updates, export a snapshot,
 rebuild and reload the Base, then continue updating. The two-round regression

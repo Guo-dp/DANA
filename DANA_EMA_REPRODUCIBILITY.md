@@ -1,6 +1,6 @@
 # DANA/EMA Paper Comparison
 
-This guide reproduces the static-query comparison between DANA and the explicitly labelled **EMA-FTFix-V2** variant. It does not compare dynamic maintenance.
+This guide reproduces the static-query comparison between DANA and the explicitly labelled **EMA-FTFix-V2** variant.
 
 ## Version Boundary
 
@@ -18,7 +18,7 @@ The patches change only:
 2. FT initialization after the level-0 memory clear;
 3. final-bucket coverage of the largest stored value.
 
-They are experimental corrections, not author-confirmed upstream fixes. The paper therefore reports `EMA-FTFix-V2`, never unmodified EMA.
+They are evaluation-specific changes, not author-confirmed upstream fixes. The reported baseline is labelled `EMA-FTFix-V2` to distinguish it from unmodified EMA.
 
 ## Build
 
@@ -66,7 +66,7 @@ python scripts/baselines/prepare_external.py \
 
 Use the analogous paths in `configs/dana_ema_paper.json` for both SIFT workloads and App-Reviews.
 
-The App test workload uses the frozen seed-2041 split:
+The App evaluation workload uses the frozen seed-2041 split (the archived configuration key is `test`):
 
 ```bash
 python scripts/baselines/prepare_prepared_subset.py \
@@ -100,7 +100,7 @@ python scripts/baselines/ema_external.py build \
   --M 16 --ef-construction 500 --threads 1 --seed 2037
 ```
 
-EMA uses 128 FT bits, `ef_top=64`, graph seed 100, and clustering seed 1234. The App test subset reuses the index built from the full App base.
+EMA uses 128 FT bits, `ef_top=64`, graph seed 100, and clustering seed 1234. The App evaluation subset reuses the index built from the full App base.
 
 ## Run The Formal Points
 
@@ -143,8 +143,8 @@ Timing includes routing and the query/search API. It excludes index loading, res
 
 The compact published evidence is under `results/ema_comparison/`. Query-level JSONL files are intentionally omitted because the formal archive is large. `reproducibility/audit.json` records the completed local audit of 260 runs and 880,000 query records.
 
-## Remaining Provenance Boundary
+## Provenance And Measurement Conditions
 
-The formal source, runner, evaluator, workload hashes, loaded EMA library path, and summary recomputation were verified. Not every historical index has an archived SHA-256. A hash computed later cannot prove which file an earlier run loaded. Fill `reproducibility/INDEX_MANIFEST.template.csv` when rebuilding indexes and keep the resulting manifest with the release artifact.
+The archived audit covers the formal source, runner, evaluator, workload hashes, loaded EMA library path, and summary recomputation. Historical index SHA-256 coverage is partial; historical file identity is assessed using the available loading paths, build records, and archived hashes. Fill `reproducibility/INDEX_MANIFEST.template.csv` when rebuilding indexes and keep the resulting manifest with the release artifact.
 
-The server was shared and CPU cores were not exclusively pinned. App measurements were interleaved. DEEP/SIFT jobs were randomized, but no dedicated low-load paired rerun is claimed.
+Measurements used a shared server without exclusive CPU pinning. App measurements were interleaved. DEEP/SIFT used randomized configuration order; the archived protocol does not include a dedicated low-load paired rerun.

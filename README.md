@@ -2,11 +2,11 @@
 
 DANA extends one-dimensional Dynamic Segment Graphs to conjunctive multi-attribute range-filtered approximate nearest-neighbor search. It keeps one valid 1-D DSG per indexed scalar attribute, chooses one indexed attribute for navigation, admits only points satisfying every predicate into the result heap, and preserves non-matching points as bridge nodes. Dynamic changes use a Base/Delta/Tombstone layer with snapshot rebuilds.
 
-This repository is the synchronized artifact snapshot used by the experiments. It contains the final C++ source, workload generators, benchmark drivers, compact workload definitions, validation datasets, paper-point summaries, and audit metadata. Public vectors and generated indexes are intentionally excluded because they are large and redistributability varies.
+This repository contains the reproducibility artifact and subsequent maintenance fixes. It includes C++ source, workload generators, benchmark drivers, compact workload definitions, validation datasets, paper-point summaries, and audit metadata. Historical experiment source hashes and current release checksums are recorded separately under `reproducibility/`. Public vectors and generated indexes are intentionally excluded because they are large and redistributability varies.
 
-## Method Boundary
+## Method Scope
 
-DANA is an engineering extension built from multiple legal one-dimensional DSG indexes. It is not a lossless multidimensional generalization of DSG edge labels. Conjunctive filtering is implemented by navigation-attribute selection plus in-search result admission.
+DANA combines attribute-specific one-dimensional DSG indexes while retaining each index's one-dimensional edge-label semantics. Conjunctive filtering is implemented by navigation-attribute selection plus in-search result admission.
 
 ## Repository Layout
 
