@@ -18,7 +18,6 @@ DANA combines attribute-specific one-dimensional DSG indexes while retaining eac
 - `scripts/`: workload preparation, experiment runners, and summarizers.
 - `data/`: small deterministic validation workloads only.
 - `workloads/`: filters and manifests for paper workloads; no public vectors.
-- `analysis/`: result extraction and plotting utilities.
 - `scripts/baselines/`: DANA/EMA adapters, EMA-FTFix-V2 patches, shared evaluator, and comparison runner.
 - `configs/dana_ema_paper.json`: frozen search grids and selected paper operating points.
 - `results/ema_comparison/`: compact DANA/EMA paper points and five-run summaries.
@@ -33,7 +32,7 @@ Requirements: Linux x86-64, CMake 3.16+, a C++17 compiler, OpenMP, and Python 3.
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
-python3 -m compileall -q scripts analysis
+python3 -m compileall -q scripts
 python3 scripts/verify_bundled_data.py
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -51,7 +50,7 @@ For the static DANA/EMA paper comparison, including the explicitly labelled EMA-
 - BigVectorBench App-Reviews, 277,936 vectors, 384 dimensions, three real labels.
 - Static DANA, HNSW post-filter, HNSW in-search, prefilter/hybrid, routing ablations, attribute scaling, and dynamic rebuild experiments.
 
-The retained summaries report formal repeated measurements. The complete historical timing archive is excluded; see `results/README.md` for retained evidence and provenance boundaries.
+The retained summaries report formal repeated measurements. The public artifact omits exploratory analysis, figure authoring, the superseded direct-insertion pipeline, duplicate workloads and large per-query output files. Aggregate logs, formal per-run statistics, correctness evidence and data-preparation tools remain available; see `results/README.md` for retained evidence and provenance boundaries.
 
 ## Data And Licensing
 

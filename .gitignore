@@ -28,10 +28,6 @@ Makefile
 # Keep deterministic bundled validation data
 !/data/vector_calc_sanity/
 !/data/vector_calc_sanity/**
-!/data/multiattr_smoke/
-!/data/multiattr_smoke/**
-!/data/multiattr_10k/
-!/data/multiattr_10k/**
 
 # Runtime logs are archived under results/
 /logs/
@@ -44,3 +40,9 @@ Makefile
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local figure authoring products are not part of the compact artifact
+/paper/
+/paper_figures/
+/tmp/
+/data/vector_calc_sanity/dana/

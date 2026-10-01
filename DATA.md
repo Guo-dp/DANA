@@ -7,8 +7,6 @@ Attribute CSV files have no header and use `id,attr0,attr1,...`. Filter CSV file
 | Directory | Base | Query | Purpose |
 |---|---:|---:|---|
 | `data/vector_calc_sanity` | 8 x 2 | 3 x 2 | Squared L2, filtering, ties, Top-3 |
-| `data/multiattr_smoke` | 32 x 4 | 4 x 4 | Three-attribute smoke workload |
-| `data/multiattr_10k` | 10,000 x 32 | 100 x 32 | Medium synthetic benchmark |
 
 `.fbin` format:
 

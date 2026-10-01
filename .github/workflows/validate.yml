@@ -18,7 +18,7 @@ jobs:
         run: sha256sum -c reproducibility/SHA256SUMS
       - name: Validate Python and bundled data
         run: |
-          python -m compileall -q scripts analysis
+          python -m compileall -q scripts
           python scripts/verify_bundled_data.py
           python -m unittest discover -s tests -p 'test_dynamic_cycle_data.py'
       - name: Configure and build C++ targets
@@ -34,6 +34,7 @@ jobs:
             --output data/vector_calc_sanity/dana \
             --chunk-rows 8
           mkdir -p index/static/vector_calc_sanity/dana
+          python scripts/verify_bundled_data.py
           for attr in 0 1 2; do
             ./build/apps/build_static_index \
               -dataset vector_calc_sanity_attr${attr} \

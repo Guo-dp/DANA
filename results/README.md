@@ -1,6 +1,6 @@
 # Experiment Results
 
-This compact artifact retains `ema_comparison/` paper operating points and five-run statistics, plus `followup_experiments/` logs and per-query outputs for controlled navigation-admission ablations and dynamic committed-state correctness audits. The complete historical log bundle and exploratory timing sweeps are excluded.
+This compact artifact retains `ema_comparison/` paper operating points and five-run statistics, `dynamic_deep10m/` default-threshold recovery records, `stable_id_rebuild/` regression evidence, and `followup_experiments/` aggregate logs and summaries for navigation-admission ablations and dynamic committed-state correctness audits. Raw per-query CSV files, the complete historical log bundle and exploratory timing sweeps are omitted for a compact release. Runners can regenerate query-level output; retained navigation-admission summaries can be recomputed from the aggregate logs alone.
 
 `followup_experiments/manifest.csv` records each retained file's relative path, byte count, SHA-256, and number of aggregate metric rows beginning with `all`.
 

@@ -22,9 +22,6 @@ add_dsg_app(query_dana_benchmark static/query_dana_benchmark.cc)
 add_dsg_app(dana_external ${PROJECT_SOURCE_DIR}/scripts/baselines/dana_external.cpp)
 target_include_directories(dana_external PRIVATE ${PROJECT_SOURCE_DIR}/apps/static)
 
-add_dsg_app(build_dynamic_index dynamic/build_dynamic_index.cc)
-add_dsg_app(insert_and_query_dynamic_index dynamic/insert_and_query_dynamic_index.cc)
-
 if(DSG_BUILD_INDEX_DEBUG)
     add_dsg_app(build_static_index_debug static/build_static_index.cc)
     target_compile_definitions(build_static_index_debug PRIVATE DSG_DEBUG_BUILD)

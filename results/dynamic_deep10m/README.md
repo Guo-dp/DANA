@@ -8,13 +8,11 @@ Source data for Table 9 and Figure 6(c): DEEP-10M, 96 dimensions, three syntheti
 
 Figure 6(a) and (b) use separate historical Delta-growth and stage-breakdown measurements. They are not intermediate states of this cycle. Earlier DEEP-1M recovery measurements are not used in Figure 6(c).
 
-Recompute, validate and regenerate the two supported figure layouts:
+Recompute and validate the numerical source data:
 
 ```bash
 python scripts/dynamic_cycle_data.py --write
 python -m unittest discover -s tests -p 'test_dynamic_cycle_data.py'
-python scripts/create_acm_insertion_safe_figures.py
-python scripts/create_paper_figures.py
 ```
 
-Without `--write`, the data script checks that the CSVs match the retained records. Both plotting scripts perform the same check before plotting recovery. `provenance.json` identifies the original logs by SHA-256; it does not assert historical source/index identity beyond those archived records.
+Without `--write`, the data script checks that the CSVs match the retained records. Figure-authoring scripts are outside this compact artifact; `table9.csv` supplies the recovery values for plotting. `provenance.json` identifies the original logs by SHA-256; it does not assert historical source/index identity beyond those archived records.

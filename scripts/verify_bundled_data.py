@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate deterministic data bundled with the partial release."""
+"""Validate the deterministic vector workload bundled with the compact artifact."""
 
 from __future__ import annotations
 
@@ -74,21 +74,22 @@ def validate_vector_sanity():
 
 
 def validate_reordering():
-    root = ROOT / "data/multiattr_smoke"
-    count, _, base = read_fbin(root / "base.32.fbin")
-    mapping_root = root / "memmap_test"
+    root = ROOT / "data/vector_calc_sanity"
+    count, _, base = read_fbin(root / "base.8.fbin")
+    mapping_root = root / "dana"
+    if not mapping_root.exists():
+        print("Reordering check deferred until prepare_dana_data_memmap.py is run")
+        return
     for attr in range(3):
         mapping = read_u32_vector(mapping_root / f"rank_to_original.attr{attr}.ibin")
         reordered_count, _, reordered = read_fbin(mapping_root / f"base.attr{attr}.fbin")
         assert reordered_count == count
         assert sorted(mapping) == list(range(count))
         assert all(reordered[rank] == base[original_id] for rank, original_id in enumerate(mapping))
-    print("OK multiattr_smoke: rank mappings and reordered vectors")
+    print("OK vector_calc_sanity: rank mappings and reordered vectors")
 
 
 def main():
-    validate_dataset("data/multiattr_smoke", "base.32.fbin", "query.4.fbin", 32, 4)
-    validate_dataset("data/multiattr_10k", "base.10000.fbin", "query.100.fbin", 10000, 100)
     validate_dataset("data/vector_calc_sanity", "base.8.fbin", "query.3.fbin", 8, 3)
     validate_vector_sanity()
     validate_reordering()
@@ -97,4 +98,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

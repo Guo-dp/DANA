@@ -9,7 +9,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
-python3 -m compileall -q scripts analysis
+python3 -m compileall -q scripts
 python3 scripts/verify_bundled_data.py
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -31,11 +31,10 @@ query_rebuilt_dana
 
 ## 2. Small Deterministic Validation
 
-Regenerate and validate the bundled workloads:
+Regenerate and validate the bundled vector sanity workload:
 
 ```bash
 python3 scripts/generate_vector_calc_sanity_data.py
-python3 scripts/generate_multiattr_smoke_data.py
 python3 scripts/verify_bundled_data.py
 ```
 
@@ -283,6 +282,15 @@ allocation high-water mark, legacy-snapshot boundary, and manuscript scope.
 
 Compact paper-point summaries, per-run statistics, audit outputs, and provenance manifests are retained under `results/` and `reproducibility/`. Large historical timing archives are intentionally excluded from the compact public artifact.
 
+The current DEEP-10M default-5%-threshold cycle (Table 9 / Figure 6(c)) is stored in `results/dynamic_deep10m/`. Verify the generated table and its run-level records with:
+
+```bash
+python3 scripts/dynamic_cycle_data.py
+python3 -m unittest discover -s tests -p 'test_dynamic_cycle_data.py'
+```
+
+The compact release contains numerical source data rather than figure-authoring scripts. Navigation--admission summaries remain reproducible from the retained aggregate logs; raw per-query CSVs are omitted.
+
 ## 7. Timing Protocol
 
 Run one benchmark process at a time. Record CPU, memory, compiler, thread count, and machine load. Repeat timing points at least three times. Use clean low-load runs for latency/QPS summaries; preserve but do not average known shared-server anomaly runs. Recall and deterministic work counters may still be compared when their output is identical.
@@ -294,7 +302,7 @@ The paper baseline package is documented separately in [DANA_EMA_REPRODUCIBILITY
 - the exact DANA JSONL adapter used by the formal measurements;
 - a shared workload converter and exact evaluator;
 - three isolated EMA-FTFix-V2 patch files and a zero-fuzz application script;
-- frozen search grids, App validation/test split, and selected operating points;
+- frozen search grids, App fitting/validation/evaluation split, and selected operating points;
 - compact five-run results and a machine-readable audit.
 
 The comparison uses exact boundary-tie Recall and does not claim a dynamic-maintenance comparison with EMA.

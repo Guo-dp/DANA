@@ -72,9 +72,6 @@ dsg_apply_common_compile_options(dsg_core)
 # configuration, enable the option below:
 #   cmake -B build -DDSG_BUILD_INDEX_DEBUG=ON ...
 #
-# To enable Benchmark executables (e.g. test_hnsw_range), use:
-#   cmake -B build -DBUILD_RANGE_BENCHMARKS=ON ...
-#
 # -----------------------------------------------------------------------------
 option(DSG_BUILD_INDEX_DEBUG "Build a debug-instrumented build_index target" OFF)
 if(DSG_BUILD_INDEX_DEBUG)
@@ -82,26 +79,3 @@ if(DSG_BUILD_INDEX_DEBUG)
     target_compile_definitions(dsg_core PRIVATE DSG_DEBUG_BUILD)
 endif()
 add_subdirectory(apps)
-
-option(BUILD_RANGE_BENCHMARKS "Build range benchmark executables under tests/" OFF)
-option(ENABLE_AVX512 "Enable AVX-512 instructions for the SIMD benchmark" OFF)
-
-
-if(BUILD_RANGE_BENCHMARKS)
-    add_executable(test_range_benchmark
-        tests/test_range_benchmark.cpp
-    )
-
-    add_executable(test_range_benchmark_simd
-        tests/test_range_benchmark_simd.cpp
-    )
-    target_compile_options(test_range_benchmark_simd PRIVATE -mavx2 -mfma)
-    if(ENABLE_AVX512)
-        target_compile_options(test_range_benchmark_simd PRIVATE -mavx512f)
-    endif()
-
-    add_executable(test_l2_benchmark
-        tests/test_l2_benchmark.cpp
-    )
-
-endif()
