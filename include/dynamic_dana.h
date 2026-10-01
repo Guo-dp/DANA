@@ -52,7 +52,8 @@ public:
         std::vector<DynamicSegmentGraph *> indexes,
         std::vector<std::vector<unsigned>> rank_to_base_local,
         std::vector<unsigned> base_local_to_original = {},
-        double rebuild_fraction = 0.05);
+        double rebuild_fraction = 0.05,
+        std::uint64_t next_original_id = 0);
 
     unsigned insert(const float *vector,
                     const std::vector<float> &attrs);
@@ -93,7 +94,7 @@ public:
         return base_tombstones_.size();
     }
 
-    unsigned nextOriginalId() const {
+    std::uint64_t nextOriginalId() const {
         return next_original_id_;
     }
 
@@ -126,11 +127,14 @@ private:
 
     // Current Base snapshot local ID -> stable original ID.
     std::vector<unsigned> base_local_to_original_;
+    std::unordered_map<unsigned, unsigned> original_to_base_local_;
 
     std::unordered_map<unsigned, DeltaPoint> delta_;
     std::unordered_set<unsigned> base_tombstones_;
 
-    unsigned next_original_id_ = 0;
+    // Persist this high-water mark even when the largest allocated ID is deleted.
+    std::uint64_t next_original_id_ = 0;
+    bool allocator_history_known_ = true;
     std::uint64_t next_version_ = 1;
     double rebuild_fraction_ = 0.05;
 

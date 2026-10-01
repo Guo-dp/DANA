@@ -12,7 +12,8 @@ DynamicDanaIndex::DynamicDanaIndex(
     std::vector<DynamicSegmentGraph *> indexes,
     std::vector<std::vector<unsigned>> rank_to_base_local,
     std::vector<unsigned> base_local_to_original,
-    double rebuild_fraction)
+    double rebuild_fraction,
+    std::uint64_t next_original_id)
     : base_data_(base_data),
       indexes_(std::move(indexes)),
       rank_to_base_local_(std::move(rank_to_base_local)),
@@ -41,6 +42,8 @@ DynamicDanaIndex::DynamicDanaIndex(
             "rebuild_fraction must be positive");
     }
 
+    allocator_history_known_ = base_local_to_original_.empty() ||
+                               next_original_id != 0;
     if (base_local_to_original_.empty()) {
         base_local_to_original_.resize(
             static_cast<std::size_t>(
@@ -63,25 +66,39 @@ DynamicDanaIndex::DynamicDanaIndex(
             "Base stable-ID mapping size mismatch");
     }
 
-    unsigned maximum_stable_id = 0;
-
-    for (const unsigned stable_id :
-         base_local_to_original_) {
-        maximum_stable_id =
-            std::max(maximum_stable_id, stable_id);
+    original_to_base_local_.reserve(base_local_to_original_.size());
+    for (unsigned local_id = 0;
+         local_id < base_local_to_original_.size(); ++local_id) {
+        const unsigned stable_id = base_local_to_original_[local_id];
+        if (!original_to_base_local_.emplace(stable_id, local_id).second) {
+            throw std::runtime_error("Duplicate Base stable ID");
+        }
+        next_original_id_ = std::max(
+            next_original_id_, static_cast<std::uint64_t>(stable_id) + 1);
     }
-
-    next_original_id_ =
-        base_local_to_original_.empty()
-            ? 0
-            : maximum_stable_id + 1;
+    if (next_original_id != 0 && next_original_id < next_original_id_) {
+        throw std::runtime_error("Snapshot ID high-water mark precedes Base IDs");
+    }
+    const std::uint64_t exhausted =
+        static_cast<std::uint64_t>(std::numeric_limits<unsigned>::max()) + 1;
+    if (next_original_id > exhausted) {
+        throw std::runtime_error("Snapshot ID high-water mark is out of range");
+    }
+    next_original_id_ = std::max(next_original_id_, next_original_id);
 }
 
 unsigned DynamicDanaIndex::insert(
     const float *vector,
     const std::vector<float> &attrs) {
 
-    const unsigned original_id = next_original_id_++;
+    if (!allocator_history_known_) {
+        throw std::runtime_error(
+            "Automatic insertion requires the snapshot ID high-water mark");
+    }
+    if (next_original_id_ > std::numeric_limits<unsigned>::max()) {
+        throw std::runtime_error("Stable ID space is exhausted");
+    }
+    const unsigned original_id = static_cast<unsigned>(next_original_id_);
 
     insertWithId(original_id, vector, attrs);
     return original_id;
@@ -102,8 +119,8 @@ void DynamicDanaIndex::insertWithId(
             "Inserted attribute count mismatch");
     }
 
-    if (original_id <
-        static_cast<unsigned>(base_data_->data_size)) {
+    if (original_to_base_local_.find(original_id) !=
+        original_to_base_local_.end()) {
         base_tombstones_.insert(original_id);
     }
 
@@ -118,7 +135,8 @@ void DynamicDanaIndex::insertWithId(
     delta_[original_id] = std::move(point);
 
     next_original_id_ =
-        std::max(next_original_id_, original_id + 1);
+        std::max(next_original_id_,
+                 static_cast<std::uint64_t>(original_id) + 1);
 }
 
 void DynamicDanaIndex::update(
@@ -126,8 +144,10 @@ void DynamicDanaIndex::update(
     const float *vector,
     const std::vector<float> &attrs) {
 
-    if (original_id >= next_original_id_ &&
-        delta_.find(original_id) == delta_.end()) {
+    const bool live_base =
+        original_to_base_local_.find(original_id) != original_to_base_local_.end() &&
+        base_tombstones_.find(original_id) == base_tombstones_.end();
+    if (!live_base && delta_.find(original_id) == delta_.end()) {
         throw std::runtime_error(
             "Cannot update an unknown ID");
     }
@@ -149,23 +169,24 @@ void DynamicDanaIndex::updateAttributes(
         return;
     }
 
-    if (original_id >=
-        static_cast<unsigned>(base_data_->data_size)) {
+    const auto base_it = original_to_base_local_.find(original_id);
+    if (base_it == original_to_base_local_.end() ||
+        base_tombstones_.find(original_id) != base_tombstones_.end()) {
         throw std::runtime_error(
             "Cannot update attributes of an unknown ID");
     }
 
     insertWithId(
         original_id,
-        base_data_->nodes[original_id],
+        base_data_->nodes[base_it->second],
         attrs);
 }
 
 void DynamicDanaIndex::erase(unsigned original_id) {
     delta_.erase(original_id);
 
-    if (original_id <
-        static_cast<unsigned>(base_data_->data_size)) {
+    if (original_to_base_local_.find(original_id) !=
+        original_to_base_local_.end()) {
         base_tombstones_.insert(original_id);
     }
 }

@@ -55,6 +55,7 @@ echo "[3/3] Installing stable ID mapping"
 cp \
   "$SNAPSHOT_DIR/snapshot_to_original.ibin" \
   "$INDEX_DIR/snapshot_to_original.ibin"
+cp "$SNAPSHOT_DIR/snapshot.meta" "$INDEX_DIR/snapshot.meta"
 
 echo "Rebuild completed"
 echo "Snapshot: $SNAPSHOT_DIR"

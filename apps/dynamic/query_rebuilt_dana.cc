@@ -19,6 +19,7 @@
 #include "data_wrapper.h"
 #include "dsg.h"
 #include "dynamic_dana.h"
+#include "dana_snapshot_metadata.h"
 #include "filter_query.h"
 
 namespace {
@@ -784,12 +785,22 @@ int main(int argc, char **argv) {
         const auto base_local_to_original =
             readRankMapping(cfg.stable_mapping_path);
 
+        auto metadata_path = fs::path(cfg.stable_mapping_path).parent_path() /
+                             "snapshot.meta";
+        if (!fs::exists(metadata_path)) {
+            metadata_path = fs::path(cfg.dataset_path).parent_path() /
+                            "snapshot.meta";
+        }
+        const auto next_original_id =
+            dsg::readSnapshotNextOriginalId(metadata_path.string(), true);
+
         dsg::DynamicDanaIndex dynamic_index(
             &data,
             index_ptrs,
             rank_to_original,
             base_local_to_original,
-            cfg.rebuild_fraction);
+            cfg.rebuild_fraction,
+            next_original_id);
 
         const auto filters =
             readFilters(

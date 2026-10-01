@@ -312,7 +312,8 @@ void exportSnapshot(
     const std::string &directory,
     const std::vector<
         dsg::DynamicDanaIndex::SnapshotPoint> &snapshot,
-    std::size_t dimension) {
+    std::size_t dimension,
+    std::uint64_t next_original_id) {
 
     if (directory.empty()) {
         return;
@@ -451,7 +452,8 @@ void exportSnapshot(
             << "count=" << count << "\n"
             << "dimension=" << dim << "\n"
             << "attribute_count="
-            << attr_count << "\n";
+            << attr_count << "\n"
+            << "next_original_id=" << next_original_id << "\n";
     }
 
     std::cout
@@ -945,7 +947,8 @@ int main(int argc, char **argv) {
             exportSnapshot(
                 cfg.snapshot_dir,
                 snapshot,
-                data.data_dim);
+                data.data_dim,
+                dynamic_index.nextOriginalId());
         }
 
     } catch (const std::exception &error) {

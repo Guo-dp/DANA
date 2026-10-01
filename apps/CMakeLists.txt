@@ -45,3 +45,6 @@ add_dsg_app(update_and_query_dana
 
 add_dsg_app(query_rebuilt_dana
             dynamic/query_rebuilt_dana.cc)
+
+add_dsg_app(test_dynamic_stable_ids
+            ${PROJECT_SOURCE_DIR}/tests/test_dynamic_stable_ids.cpp)
