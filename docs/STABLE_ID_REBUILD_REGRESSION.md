@@ -80,7 +80,7 @@ violations were zero. The approximate misses above are reported separately;
 the test does not claim that state correctness implies perfect ANN Recall.
 Nine actual attribute DSGs were built, saved, and reloaded across the initial
 Base and the two rebuilds. This is a correctness regression, not a performance
-benchmark or evidence for post-capture replay.
+benchmark.
 
 ## Existing measurements and scope
 
@@ -93,9 +93,7 @@ itself invalidate those query measurements, but the additional reverse-map
 memory and initialization cost were not measured in them. No updated timing
 or peak-RSS claim is made by this correctness regression.
 
-This test establishes sequential updates after installing a rebuilt Base.
-Capture-time logging, replay of operations issued after snapshot capture,
-concurrent queries/updates, and background Base replacement are not implemented
-or validated by this patch. A manuscript equation describing post-capture
-replay must be labelled as a proposed protocol rather than implemented
-functionality until that operation log and replay path exist.
+The validated workflow is sequential: apply updates, export a snapshot,
+rebuild and reload the Base, then continue updating. The two-round regression
+checks stable IDs, object contents, deletion state, and allocation history
+through that workflow.
