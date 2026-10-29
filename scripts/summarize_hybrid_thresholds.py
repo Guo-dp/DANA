@@ -18,11 +18,27 @@ SCANNED = re.compile(r"scanned=(?P<value>[\d.]+)")
 PASSED = re.compile(r"passed=(?P<value>[\d.]+)")
 RECALL = re.compile(r"recall=(?P<value>[\d.]+)")
 
+PROFILE_RATIOS = {
+    "tiny_all": 0.005 ** 3,
+    "small_all": 0.01 ** 3,
+    "medium_all": 0.05 ** 3,
+    "attr0_narrow": 0.10 * 0.50 * 0.50,
+    "attr1_narrow": 0.50 * 0.10 * 0.50,
+    "attr2_narrow": 0.50 * 0.50 * 0.10,
+    "balanced": 0.20 ** 3,
+    "broad": 0.50 ** 3,
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--prefilter-log", required=True)
     parser.add_argument("--dsg-log", required=True)
+    parser.add_argument(
+        "--count-source", choices=("observed", "independent"), default="observed",
+        help="Observed counts are offline Prefilter results, not an online estimator.",
+    )
+    parser.add_argument("--N", type=int, default=1_000_000)
     parser.add_argument(
         "--thresholds",
         default="1000,5000,10000,50000",
@@ -57,23 +73,14 @@ def parse_log(path: Path) -> dict[str, dict[str, float]]:
     return rows
 
 
-def default_estimated_count(profile: str, prefilter_row: dict[str, float]) -> float:
-    # Hybrid should decide by estimated legal candidates, not by the primary
-    # rank interval scanned by Prefiltering. The Prefiltering benchmark reports
-    # this directly as average passed points.
-    if "passed" in prefilter_row:
-        return prefilter_row["passed"]
-    fallback = {
-        "tiny_all": 5_000,
-        "small_all": 10_000,
-        "medium_all": 50_000,
-        "attr0_narrow": 100_000,
-        "attr1_narrow": 100_000,
-        "attr2_narrow": 100_000,
-        "balanced": 200_000,
-        "broad": 500_000,
-    }
-    return float(fallback.get(profile, 0))
+def candidate_count(profile, prefilter_row, source, size):
+    if source == "independent":
+        if size <= 0 or profile not in PROFILE_RATIOS:
+            raise ValueError("Independent counts require positive N and a known synthetic profile")
+        return size * PROFILE_RATIOS[profile]
+    if "passed" not in prefilter_row:
+        raise ValueError(f"Missing observed legal count for {profile}")
+    return prefilter_row["passed"]
 
 
 def main() -> None:
@@ -81,6 +88,7 @@ def main() -> None:
     prefilter = parse_log(Path(args.prefilter_log))
     dsg = parse_log(Path(args.dsg_log))
     thresholds = [float(raw) for raw in args.thresholds.split(",") if raw]
+    print(f"count_source={args.count_source}; offline log-based latency summary")
 
     profiles = [profile for profile in prefilter if profile in dsg]
     if not profiles:
@@ -91,12 +99,12 @@ def main() -> None:
         total_ms = 0.0
         print(f"===== threshold={threshold:.0f} =====")
         print(
-            f"{'profile':<14} {'est_legal':>10} {'choice':>8} "
+            f"{'profile':<14} {'legal_n':>10} {'choice':>8} "
             f"{'pref_ms':>10} {'dsg_ms':>10} {'dsg_rec':>8} {'hybrid_ms':>10}"
         )
         for profile in profiles:
             queries = prefilter[profile]["queries"]
-            est_n = default_estimated_count(profile, prefilter[profile])
+            est_n = candidate_count(profile, prefilter[profile], args.count_source, args.N)
             use_prefilter = est_n <= threshold
             chosen = prefilter[profile] if use_prefilter else dsg[profile]
             total_queries += queries

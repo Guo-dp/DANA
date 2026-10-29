@@ -11,10 +11,7 @@ function(add_dsg_app TARGET_NAME SOURCE_FILE)
     dsg_apply_common_compile_options(${TARGET_NAME})
 endfunction()
 
-add_dsg_app(generate_groundtruth_static static/generate_groundtruth_static.cc)
 add_dsg_app(build_static_index static/build_static_index.cc)
-add_dsg_app(query_static_index static/query_static_index.cc)
-add_dsg_app(query_multi_filter_benchmark static/query_multi_filter_benchmark.cc)
 add_dsg_app(query_dana_benchmark static/query_dana_benchmark.cc)
 
 # JSONL adapter used by the paper's DANA/EMA comparison. The adapter includes

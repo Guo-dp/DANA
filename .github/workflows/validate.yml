@@ -25,6 +25,34 @@ jobs:
           python scripts/baselines/audit_dana_ema_reproducibility.py
           python scripts/paper_evidence.py
           python scripts/paper_evidence.py --file results/replay_followup/maintenance_regression.csv
+      - name: Verify consolidated evaluation helpers
+        run: |
+          python - <<'PY'
+          import sys
+          import numpy as np
+          sys.path[:0] = ['scripts/baselines', 'scripts']
+          from evaluate_external import tie_credit
+          from summarize_hybrid_thresholds import candidate_count
+          for expected, actual, tolerance, credit in (
+              ([], [], 0, 1),
+              ([], [1], 0, 0),
+              ([1, 2, 3], [2, 3, 3], 0, 2/3),
+              ([1, 2, 3], [1, 2, 3], 0, 1),
+              ([1, 2, 3], [3, 3, 3], 0, 1/3),
+              ([1, 1], [1, 1], 0, 1),
+              ([1, 2, 3], [1, 2, 3.0000001], 0.000001, 1),
+          ):
+              assert tie_credit(np.array(expected), np.array(actual), tolerance) == credit
+          assert candidate_count('balanced', {'passed': 8022}, 'observed', 1000000) == 8022
+          assert abs(candidate_count('balanced', {}, 'independent', 1000000) - 8000) < 1e-9
+          try:
+              candidate_count('balanced', {}, 'observed', 1000000)
+          except ValueError:
+              pass
+          else:
+              raise AssertionError('Missing observed counts must not use rank-span counts')
+          print('ALL PASS consolidated_evaluation_helpers')
+          PY
       - name: Configure and build C++ targets
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

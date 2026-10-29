@@ -50,7 +50,7 @@ For the static DANA/EMA paper comparison, including the explicitly labelled EMA-
 - BigVectorBench App-Reviews, 277,936 vectors, 384 dimensions, three real labels.
 - Static DANA, HNSW post-filter, HNSW in-search, prefilter/hybrid, routing ablations, attribute scaling, and dynamic rebuild experiments.
 
-The retained summaries report formal repeated measurements. The public artifact omits exploratory analysis, figure authoring, the superseded direct-insertion pipeline, duplicate workloads and large per-query output files. Aggregate logs, formal per-run statistics, correctness evidence and data-preparation tools remain available; see `results/README.md` for retained evidence and provenance boundaries.
+The retained summaries report formal repeated measurements. The public artifact omits exploratory analysis, figure authoring, the superseded direct-insertion pipeline, duplicate workloads and large per-query output files. Aggregate logs, formal per-run statistics, correctness evidence and data-preparation tools remain available; see [REPRODUCIBILITY.md](REPRODUCIBILITY.md#6-result-verification) for retained evidence and provenance boundaries and [docs/DYNAMIC_VALIDATION.md](docs/DYNAMIC_VALIDATION.md) for dynamic validation.
 
 ## Data And Licensing
 

@@ -21,7 +21,7 @@ mkdir -p "$LOG_DIR"
 
 echo "[1/3] Preparing attribute-ordered vectors"
 
-python3 "${REORDER_SCRIPT:-scripts/prepare_dana_data.py}" \
+python3 "${REORDER_SCRIPT:-scripts/prepare_dana_data_memmap.py}" \
   --base "$SNAPSHOT_DIR/base.snapshot.fbin" \
   --attrs "$SNAPSHOT_DIR/attrs.snapshot.csv" \
   --attr-count "$ATTR_COUNT" \

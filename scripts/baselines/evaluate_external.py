@@ -6,7 +6,18 @@ from pathlib import Path
 import numpy as np
 
 from prepare_external import fbin, write_json
-from audit_ema_plateau import tie_credit
+
+
+def tie_credit(expected_dist, actual_dist, tol):
+    k = len(expected_dist)
+    if not k:
+        return float(len(actual_dist) == 0)
+    radius = expected_dist[-1]
+    # Strictly nearer slots cannot be replaced with extra kth-distance ties.
+    strict_slots = int(np.sum(expected_dist < radius - tol))
+    strict_hits = min(strict_slots, int(np.sum(actual_dist < radius - tol)))
+    boundary_hits = int(np.sum(np.abs(actual_dist - radius) <= tol))
+    return (strict_hits + min(k - strict_slots, boundary_hits)) / k
 
 
 def evaluate(data, results, audit_distances=False):

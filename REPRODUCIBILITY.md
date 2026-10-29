@@ -204,7 +204,7 @@ python3 scripts/generate_multiattr_independent_data.py \
   --output data/multiattr_100k_independent \
   --size 100000 --dim 32 --queries 300 --topk 10 --seed 2029
 
-python3 scripts/prepare_dana_data.py \
+python3 scripts/prepare_dana_data_memmap.py \
   --base data/multiattr_100k_independent/base.100000.fbin \
   --attrs data/multiattr_100k_independent/attrs.csv \
   --attr-count 3 --output data/multiattr_100k_independent/dana
@@ -275,7 +275,7 @@ counter is nonzero.
 All `*_visibility_violations` values are violation counts rather than visible
 object counts. A value of zero means that no violation was detected. The exact
 control variables for the hard-pruning ablation and the audit-counter semantics
-are documented in `docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md`.
+are documented in `docs/DYNAMIC_VALIDATION.md`.
 
 For continued mutations after compaction, run the independent stable-ID
 regression and its 1,000-point, three-attribute, two-rebuild integration case:
@@ -285,7 +285,7 @@ cmake --build build -j 2 --target test_dynamic_stable_ids
 OMP_NUM_THREADS=1 ./build/apps/test_dynamic_stable_ids /tmp/dana-stable-id-test
 ```
 
-See `docs/STABLE_ID_REBUILD_REGRESSION.md` for the reference model, saved ID
+See `docs/DYNAMIC_VALIDATION.md` for the reference model, saved ID
 allocation high-water mark, legacy-snapshot boundary, and manuscript scope.
 
 ## 6. Result Verification
@@ -313,12 +313,12 @@ OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup contracts /tmp/dana-
 Dynamic CLIs accept `-indexed_attrs none` or `0,2` and `-query_attrs "0 2"`.
 Static query CSVs can append `query_attrs` with space-separated IDs. No applicable
 deployed attribute routes to exact live-Base search plus the Delta heap. See
-`docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md` for the actual frontier, tie,
+`docs/DYNAMIC_VALIDATION.md` for the actual frontier, tie,
 small-range and tombstone policy; the historical search is not described as a
 uniform stable-ID/lazy-deletion implementation.
 
 Sequential post-capture replay and its small performance regression are documented
-in [docs/CAPTURE_REPLAY_REGRESSION.md](docs/CAPTURE_REPLAY_REGRESSION.md).
+in [docs/DYNAMIC_VALIDATION.md](docs/DYNAMIC_VALIDATION.md#sequential-capture-and-replay).
 The 1,000-point fixture is generated in C++ and requires no large dataset:
 
 ```bash
@@ -333,7 +333,7 @@ This validates sequential in-memory replay, not concurrent background installati
 or durable recovery. Strict-ID ANN Recall remains separate from state correctness.
 
 The randomized five-seed/five-round replay audit and the post-rebuild ANN search-budget
-curve are documented in [docs/CAPTURE_REPLAY_REGRESSION.md](docs/CAPTURE_REPLAY_REGRESSION.md).
+curve are documented in [docs/DYNAMIC_VALIDATION.md](docs/DYNAMIC_VALIDATION.md#sequential-capture-and-replay).
 They use generated 1,000-point data and require no external datasets:
 
 ```bash
@@ -343,6 +343,51 @@ OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup quality /tmp/dana-re
 ```
 
 Compact paper-point summaries, per-run statistics, audit outputs, and provenance manifests are retained under `results/` and `reproducibility/`. Large historical timing archives are intentionally excluded from the compact public artifact.
+
+### Retained Evidence And Version Binding
+
+| Location | Retained evidence |
+|---|---|
+| `results/ema_comparison/` | Paper operating points, fifty per-run summaries, variability and provenance |
+| `results/dynamic_deep10m/` | Default-threshold recovery records and Table 9 / Figure 6(c) source data |
+| `results/followup_experiments/` | Three paired DEEP-10M navigation--admission runs and committed-state audit logs |
+| `results/stable_id_rebuild/` | Independent two-rebuild stable-ID regression output |
+| `results/capture_replay/` | Fifteen-run measurements, validation output, environment and historical source hashes |
+| `results/replay_followup/` | Randomized replay, three-seed ANN quality, API contracts and paired maintenance regression |
+| `results/paper_evidence.csv` | Metric excerpts from 58 original logs, with source line numbers and log SHA-256 values |
+
+The historical excerpts cover HNSW comparisons, Hybrid routing, build costs,
+attribute-count curves, Delta growth and trigger checks. Their hashes bind the
+inspected logs, not historical binaries or indexes. Table 6's complete original
+routing/calibration grid is not reconstructed by this CSV.
+
+`results/replay_followup/maintenance_regression.csv` retains 60 records from five
+alternating before/after runs on synthetic-1K and DEEP-1M-96D: k=10, ef=128/1024,
+respectively. DEEP uses the first 100 queries and 50K each of insert/update/delete
+(seed 2031). Measured binaries and source logs are hashed. These new measurements
+do not replace historical DEEP-10M timings or establish a consistent speedup.
+
+`results/followup_experiments/manifest.csv` records retained files' relative paths,
+byte counts, SHA-256 values, and metric rows beginning with `all`. Historical audit
+hashes describe the original experiment snapshot; current release hashes are
+separate. Names and paths in retained follow-up logs were normalized to DANA
+without changing measurements. Full historical query JSONL and indexes are not
+bundled; the full historical audit requires those external inputs.
+
+Verify or refresh current release checksums from the repository root:
+
+```bash
+sha256sum -c reproducibility/SHA256SUMS
+# After intentional changes, stage the intended file set before refreshing.
+git add -A
+python3 scripts/update_reproducibility_hashes.py
+```
+
+The archived Hybrid threshold summary uses observed mean legal counts from
+completed Prefilter runs. It is an offline estimate of route cost, not a measured
+online router. `summarize_hybrid_thresholds.py --count-source independent --N N`
+instead uses the synthetic profiles' independent marginal selectivities; this
+assumption must not be transferred to correlated real attributes without validation.
 
 The current DEEP-10M default-5%-threshold cycle (Table 9 / Figure 6(c)) is stored in `results/dynamic_deep10m/`. Verify the generated table and its run-level records with:
 
