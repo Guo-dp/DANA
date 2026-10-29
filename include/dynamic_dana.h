@@ -28,6 +28,9 @@ public:
         std::size_t base_candidates = 0;
         std::size_t delta_scanned = 0;
         std::size_t tombstones = 0;
+        std::size_t graph_distance_evaluations = 0;
+        std::size_t base_rerank_distance_evaluations = 0;
+        std::size_t delta_distance_evaluations = 0;
         unsigned navigation_attr = 0;
         double base_search_ms = 0.0;
         double delta_scan_ms = 0.0;
@@ -46,6 +49,39 @@ public:
         std::uint64_t version = 0;
         bool from_delta = false;
     };
+
+    // Sequential, in-memory rebuild handoff. Upserts store complete point images,
+    // including attribute-only updates; this is not a durable write-ahead log.
+    struct Mutation {
+        std::uint64_t sequence = 0;
+        unsigned original_id = 0;
+        bool erased = false;
+        std::vector<float> vector;
+        std::vector<float> attrs;
+        std::uint64_t version = 0;
+    };
+    struct RebuildCapture {
+        std::vector<SnapshotPoint> points;
+        std::uint64_t sequence = 0;
+        std::uint64_t next_original_id = 0;
+        std::uint64_t next_version = 1;
+        std::uint64_t token = 0;
+    };
+    struct RebuildJournal {
+        std::vector<Mutation> operations;
+        std::uint64_t token = 0;
+        std::uint64_t end_sequence = 0;
+        std::uint64_t next_original_id = 0;
+        std::uint64_t next_version = 1;
+    };
+
+    RebuildCapture captureForRebuild();
+    RebuildJournal journalSince(const RebuildCapture &capture) const;
+    // Retire only the acknowledged batch; reject writes after its exported cut.
+    void finishCapture(const RebuildCapture &capture,
+                       const RebuildJournal &acknowledged);
+    void replayAfterCapture(const RebuildCapture &capture,
+                            const RebuildJournal &journal);
 
     DynamicDanaIndex(
         const DataWrapper *base_data,
@@ -107,6 +143,8 @@ public:
     }
 
 private:
+    void prepareMutation();
+    void requireActiveCapture(const RebuildCapture &capture) const;
     bool deltaPassesFilter(
         const DeltaPoint &point,
         const MultiRangeQuery &filter) const;
@@ -137,6 +175,13 @@ private:
     bool allocator_history_known_ = true;
     std::uint64_t next_version_ = 1;
     double rebuild_fraction_ = 0.05;
+
+    std::uint64_t committed_sequence_ = 0;
+    std::uint64_t capture_generation_ = 0;
+    std::uint64_t active_capture_token_ = 0;
+    std::uint64_t capture_sequence_ = 0;
+    bool replay_installed_ = false;
+    std::vector<Mutation> journal_;
 
     SearchStats last_stats_;
     std::vector<ResultAudit> last_result_audit_;

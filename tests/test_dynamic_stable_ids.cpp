@@ -124,7 +124,8 @@ struct Bundle {
     std::unique_ptr<Index> index;
 
     Bundle(const std::map<unsigned, Point> &points, std::uint64_t next_id,
-           const fs::path &directory = {}, bool build_graphs = false) {
+           const fs::path &directory = {}, bool build_graphs = false,
+           unsigned graph_seed = 2051) {
         require(!points.empty(), "nonempty fixture required");
         const unsigned n = points.size();
         const unsigned dimensions = points.begin()->second.vector.size();
@@ -166,7 +167,7 @@ struct Bundle {
                 graph->M = 8;
                 graph->ef_construction = 40;
                 graph->ef_max = 48;
-                graph->random_seed = 2051;
+                graph->random_seed = graph_seed;
                 graph->build(data->labels);
                 const auto path = (directory / ("attr" + std::to_string(attr) + ".dsg")).string();
                 graph->save(path);
@@ -184,7 +185,7 @@ struct Bundle {
 
 void checkQueries(Index &index, const Reference &reference,
                   const std::string &phase, bool approximate) {
-    double recall = 0;
+    double recall = 0, tie_recall = 0;
     unsigned query_count = 0;
     for (unsigned q = 0; q < 40; ++q) {
         const auto query = generated(q * 19).vector;
@@ -205,6 +206,10 @@ void checkQueries(Index &index, const Reference &reference,
             const auto &audit = index.lastResultAudit();
             require(audit.size() == actual.size(), phase + ": audit count");
             unsigned hits = 0;
+            unsigned closer_hits = 0, boundary_hits = 0, closer_total = 0;
+            const float boundary = expected.empty() ? 0 : distance(query, reference.live.at(expected.back()));
+            for (const auto &entry : reference.live)
+                if (passes(entry.second, filter) && distance(query, entry.second) < boundary) ++closer_total;
             for (unsigned i = 0; i < actual.size(); ++i) {
                 const auto found = reference.live.find(actual[i]);
                 require(found != reference.live.end(), phase + ": ANN deleted/invalid ID");
@@ -213,14 +218,20 @@ void checkQueries(Index &index, const Reference &reference,
                 require(audit[i].from_delta == (reference.delta_ids.count(actual[i]) != 0),
                         phase + ": ANN stale source version");
                 if (std::find(expected.begin(), expected.end(), actual[i]) != expected.end()) ++hits;
+                const float d = distance(query, found->second);
+                if (d < boundary) ++closer_hits;
+                else if (d == boundary) ++boundary_hits;
             }
             recall += expected.empty() ? 1.0 : static_cast<double>(hits) / expected.size();
+            tie_recall += expected.empty() ? 1.0 :
+                static_cast<double>(closer_hits + std::min<unsigned>(boundary_hits, expected.size() - closer_total)) / expected.size();
         }
         ++query_count;
     }
     std::cout << "QUERY PASS phase=" << phase << " exact_queries=" << query_count;
     if (approximate) std::cout << " ann_recall=" << std::fixed << std::setprecision(6)
-                               << recall / query_count << " state_violations=0";
+                               << recall / query_count << " boundary_tie_recall=" << tie_recall / query_count
+                               << " state_violations=0";
     std::cout << '\n';
 }
 
@@ -323,7 +334,8 @@ void writeSnapshot(const fs::path &root, const Index &index) {
     require(vectors.good() && mapping.good() && attrs.good() && meta.good(), "snapshot write failed");
 }
 
-std::unique_ptr<Bundle> reload(const fs::path &root, Reference &reference) {
+std::unique_ptr<Bundle> reload(const fs::path &root, Reference &reference,
+                               unsigned graph_seed = 2051) {
     const auto next_id = dsg::readSnapshotNextOriginalId((root / "snapshot.meta").string());
     std::ifstream mapping(root / "snapshot_to_original.ibin", std::ios::binary);
     std::uint32_t count = 0;
@@ -348,7 +360,7 @@ std::unique_ptr<Bundle> reload(const fs::path &root, Reference &reference) {
     require(mapping.good() && actual.size() == reference.live.size(), "mapping/state load mismatch");
     require(next_id == reference.next_id, "serialized allocator differs from operation replay");
     reference.installed();
-    return std::make_unique<Bundle>(actual, next_id, root / "indexes", true);
+    return std::make_unique<Bundle>(actual, next_id, root / "indexes", true, graph_seed);
 }
 
 void twoRebuilds(const fs::path &root) {
@@ -392,6 +404,7 @@ void twoRebuilds(const fs::path &root) {
     std::cout << "REBUILD PASS initial=1000 attributes=3 rounds=2 state_violations=0\n";
 }
 
+#ifndef DANA_STABLE_ID_HELPERS_ONLY
 int main(int argc, char **argv) {
     try {
         unitCases();
@@ -403,3 +416,4 @@ int main(int argc, char **argv) {
         return 1;
     }
 }
+#endif

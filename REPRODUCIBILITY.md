@@ -280,6 +280,31 @@ allocation high-water mark, legacy-snapshot boundary, and manuscript scope.
 
 ## 6. Result Verification
 
+Sequential post-capture replay and its small performance regression are documented
+in [docs/CAPTURE_REPLAY_REGRESSION.md](docs/CAPTURE_REPLAY_REGRESSION.md).
+The 1,000-point fixture is generated in C++ and requires no large dataset:
+
+```bash
+cmake --build build -j 2 --target test_dynamic_capture_replay
+OMP_NUM_THREADS=1 ./build/apps/test_dynamic_capture_replay correctness /tmp/dana-capture-replay
+python3 scripts/summarize_capture_replay.py results/capture_replay
+```
+
+For a new five-repeat comparison against the frozen v3 core, use a fresh output
+directory: `OUT_DIR=/tmp/dana-replay-results bash scripts/run_capture_replay_experiments.sh`.
+This validates sequential in-memory replay, not concurrent background installation
+or durable recovery. Strict-ID ANN Recall remains separate from state correctness.
+
+The randomized five-seed/five-round replay audit and the post-rebuild ANN search-budget
+curve are documented in [docs/CAPTURE_REPLAY_REGRESSION.md](docs/CAPTURE_REPLAY_REGRESSION.md).
+They use generated 1,000-point data and require no external datasets:
+
+```bash
+cmake --build build -j 2 --target test_dynamic_replay_followup
+OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup random /tmp/dana-replay-random
+OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup quality /tmp/dana-replay-quality
+```
+
 Compact paper-point summaries, per-run statistics, audit outputs, and provenance manifests are retained under `results/` and `reproducibility/`. Large historical timing archives are intentionally excluded from the compact public artifact.
 
 The current DEEP-10M default-5%-threshold cycle (Table 9 / Figure 6(c)) is stored in `results/dynamic_deep10m/`. Verify the generated table and its run-level records with:

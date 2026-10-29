@@ -119,24 +119,35 @@ void DynamicDanaIndex::insertWithId(
             "Inserted attribute count mismatch");
     }
 
-    if (original_to_base_local_.find(original_id) !=
-        original_to_base_local_.end()) {
-        base_tombstones_.insert(original_id);
-    }
-
     DeltaPoint point;
     point.original_id = original_id;
     point.vector.assign(
         vector,
         vector + base_data_->data_dim);
     point.attrs = attrs;
-    point.version = next_version_++;
+    prepareMutation();
+    if (next_version_ == std::numeric_limits<std::uint64_t>::max())
+        throw std::runtime_error("Version space is exhausted");
+    point.version = next_version_;
+    Mutation operation;
+    if (active_capture_token_) {
+        operation.sequence = committed_sequence_ + 1;
+        operation.original_id = original_id;
+        operation.vector = point.vector;
+        operation.attrs = point.attrs;
+        operation.version = point.version;
+    }
+    if (original_to_base_local_.find(original_id) != original_to_base_local_.end())
+        base_tombstones_.insert(original_id);
 
     delta_[original_id] = std::move(point);
 
     next_original_id_ =
         std::max(next_original_id_,
                  static_cast<std::uint64_t>(original_id) + 1);
+    ++next_version_;
+    ++committed_sequence_;
+    if (active_capture_token_) journal_.push_back(std::move(operation));
 }
 
 void DynamicDanaIndex::update(
@@ -183,12 +194,118 @@ void DynamicDanaIndex::updateAttributes(
 }
 
 void DynamicDanaIndex::erase(unsigned original_id) {
-    delta_.erase(original_id);
-
-    if (original_to_base_local_.find(original_id) !=
-        original_to_base_local_.end()) {
+    prepareMutation();
+    Mutation operation;
+    operation.sequence = committed_sequence_ + 1;
+    operation.original_id = original_id;
+    operation.erased = true;
+    if (original_to_base_local_.find(original_id) != original_to_base_local_.end())
         base_tombstones_.insert(original_id);
+    delta_.erase(original_id);
+    ++committed_sequence_;
+    if (active_capture_token_) journal_.push_back(std::move(operation));
+}
+
+void DynamicDanaIndex::prepareMutation() {
+    if (committed_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        throw std::runtime_error("Operation sequence is exhausted");
+    if (active_capture_token_ && journal_.size() == journal_.capacity())
+        journal_.reserve(std::max<std::size_t>(16, journal_.capacity() * 2));
+}
+
+DynamicDanaIndex::RebuildCapture DynamicDanaIndex::captureForRebuild() {
+    if (active_capture_token_ || !allocator_history_known_)
+        throw std::runtime_error("Capture requires known allocator history and no active capture");
+    if (capture_generation_ == std::numeric_limits<std::uint64_t>::max())
+        throw std::runtime_error("Capture token space is exhausted");
+    RebuildCapture capture;
+    capture.points = createSnapshot();
+    capture.sequence = committed_sequence_;
+    capture.next_original_id = next_original_id_;
+    capture.next_version = next_version_;
+    capture.token = ++capture_generation_;
+    journal_.clear();
+    capture_sequence_ = committed_sequence_;
+    active_capture_token_ = capture.token;
+    return capture;
+}
+
+void DynamicDanaIndex::requireActiveCapture(const RebuildCapture &capture) const {
+    if (!active_capture_token_ || capture.token != active_capture_token_ ||
+        capture.sequence != capture_sequence_)
+        throw std::runtime_error("Unknown or finished capture");
+}
+
+DynamicDanaIndex::RebuildJournal DynamicDanaIndex::journalSince(
+    const RebuildCapture &capture) const {
+    requireActiveCapture(capture);
+    RebuildJournal result;
+    result.operations = journal_;
+    result.token = active_capture_token_;
+    result.end_sequence = committed_sequence_;
+    result.next_original_id = next_original_id_;
+    result.next_version = next_version_;
+    return result;
+}
+
+void DynamicDanaIndex::finishCapture(const RebuildCapture &capture,
+                                    const RebuildJournal &acknowledged) {
+    requireActiveCapture(capture);
+    if (acknowledged.token != active_capture_token_ ||
+        acknowledged.end_sequence != committed_sequence_ ||
+        acknowledged.operations.size() != journal_.size() ||
+        acknowledged.next_original_id != next_original_id_ ||
+        acknowledged.next_version != next_version_)
+        throw std::runtime_error("Capture has unacknowledged operations");
+    active_capture_token_ = 0;
+    std::vector<Mutation>().swap(journal_);
+}
+
+void DynamicDanaIndex::replayAfterCapture(const RebuildCapture &capture,
+                                        const RebuildJournal &journal) {
+    if (active_capture_token_ || replay_installed_ || committed_sequence_ ||
+        !delta_.empty() || !base_tombstones_.empty() ||
+        !allocator_history_known_ || !capture.token || journal.token != capture.token)
+        throw std::runtime_error("Replay requires a fresh matching snapshot Base");
+    const auto base = createSnapshot();
+    if (base.size() != capture.points.size() || next_original_id_ != capture.next_original_id)
+        throw std::runtime_error("Captured Base or allocator mismatch");
+    for (std::size_t i = 0; i < base.size(); ++i)
+        if (base[i].original_id != capture.points[i].original_id ||
+            base[i].vector != capture.points[i].vector || base[i].attrs != capture.points[i].attrs)
+            throw std::runtime_error("Captured Base content mismatch");
+    if (!capture.next_version || journal.end_sequence < capture.sequence ||
+        journal.end_sequence - capture.sequence != journal.operations.size())
+        throw std::runtime_error("Incomplete journal");
+    // Check the complete ordered batch before mutating the replacement instance.
+    auto sequence = capture.sequence;
+    auto version = capture.next_version;
+    auto watermark = capture.next_original_id;
+    for (const auto &operation : journal.operations) {
+        if (sequence == std::numeric_limits<std::uint64_t>::max() ||
+            operation.sequence != ++sequence)
+            throw std::runtime_error("Noncontiguous journal sequence");
+        if (operation.erased) {
+            if (!operation.vector.empty() || !operation.attrs.empty() || operation.version)
+                throw std::runtime_error("Invalid erase record");
+        } else {
+            if (operation.vector.size() != static_cast<std::size_t>(base_data_->data_dim) ||
+                operation.attrs.size() != base_data_->attr_count ||
+                version == std::numeric_limits<std::uint64_t>::max() ||
+                operation.version != version++)
+                throw std::runtime_error("Invalid upsert record");
+            watermark = std::max(watermark, static_cast<std::uint64_t>(operation.original_id) + 1);
+        }
     }
+    if (watermark != journal.next_original_id || version != journal.next_version)
+        throw std::runtime_error("Journal allocator/version mismatch");
+    committed_sequence_ = capture.sequence;
+    next_version_ = capture.next_version;
+    for (const auto &operation : journal.operations) {
+        if (operation.erased) erase(operation.original_id);
+        else insertWithId(operation.original_id, operation.vector.data(), operation.attrs);
+    }
+    replay_installed_ = true;
 }
 
 unsigned DynamicDanaIndex::stableIdOfBaseLocal(
@@ -344,6 +461,8 @@ std::vector<unsigned> DynamicDanaIndex::search(
                 filter,
                 base_data_,
                 rank_to_base_local_.at(navigation_attr));
+            last_stats_.graph_distance_evaluations +=
+                index->last_distance_eval_count();
 
             std::vector<Candidate> valid_base;
 
@@ -367,6 +486,7 @@ std::vector<unsigned> DynamicDanaIndex::search(
                     stable_id,
                     0,
                     false});
+                ++last_stats_.base_rerank_distance_evaluations;
             }
 
             last_stats_.base_candidates =
@@ -424,6 +544,7 @@ std::vector<unsigned> DynamicDanaIndex::search(
             point.original_id,
             point.version,
             true});
+        ++last_stats_.delta_distance_evaluations;
     }
 
     const auto delta_end =

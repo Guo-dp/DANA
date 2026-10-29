@@ -21,6 +21,7 @@ jobs:
           python -m compileall -q scripts
           python scripts/verify_bundled_data.py
           python -m unittest discover -s tests -p 'test_dynamic_cycle_data.py'
+          python scripts/summarize_capture_replay.py results/capture_replay
       - name: Configure and build C++ targets
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -48,6 +49,16 @@ jobs:
         run: |
           OMP_NUM_THREADS=1 ./build/apps/test_dynamic_stable_ids "$RUNNER_TEMP/dana-stable-id-rebuild" | tee stable-id-test.log
           grep -q '^ALL PASS independent_operation_replay' stable-id-test.log
+      - name: Audit sequential post-capture replay
+        run: |
+          OMP_NUM_THREADS=1 ./build/apps/test_dynamic_capture_replay correctness "$RUNNER_TEMP/dana-capture-replay" | tee capture-replay-test.log
+          grep -q '^ALL PASS sequential_capture_replay' capture-replay-test.log
+      - name: Audit randomized replay and ANN quality
+        run: |
+          OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup random "$RUNNER_TEMP/dana-replay-random" | tee replay-random-test.log
+          grep -q '^ALL PASS randomized_sequential_replay seeds=5 rounds=25 operations=25000' replay-random-test.log
+          OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup quality "$RUNNER_TEMP/dana-replay-quality" | tee replay-quality-test.log
+          grep -q '^ALL PASS replay_quality_curve graph_seeds=3 rows=27' replay-quality-test.log
       - name: Run integrated DANA smoke test
         run: |
           ./build/apps/query_dana_benchmark \

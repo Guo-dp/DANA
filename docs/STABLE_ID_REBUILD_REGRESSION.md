@@ -99,3 +99,8 @@ The validated workflow is sequential: apply updates, export a snapshot,
 rebuild and reload the Base, then continue updating. The two-round regression
 checks stable IDs, object contents, deletion state, and allocation history
 through that workflow.
+
+A subsequent small experiment adds explicit post-capture journaling and ordered
+replay; see [CAPTURE_REPLAY_REGRESSION.md](CAPTURE_REPLAY_REGRESSION.md) for its
+independent state checks and separately measured new costs. The frozen v3 artifact
+and the historical performance measurements above are not overwritten.

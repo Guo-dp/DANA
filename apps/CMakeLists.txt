@@ -45,3 +45,12 @@ add_dsg_app(query_rebuilt_dana
 
 add_dsg_app(test_dynamic_stable_ids
             ${PROJECT_SOURCE_DIR}/tests/test_dynamic_stable_ids.cpp)
+add_dsg_app(test_dynamic_capture_replay
+            ${PROJECT_SOURCE_DIR}/tests/test_dynamic_capture_replay.cpp)
+option(DANA_REPLAY_PERF_BASELINE "Benchmark the frozen v3 core without replay API" OFF)
+if(DANA_REPLAY_PERF_BASELINE)
+    target_compile_definitions(test_dynamic_capture_replay PRIVATE DANA_REPLAY_PERF_BASELINE)
+else()
+    add_dsg_app(test_dynamic_replay_followup
+                ${PROJECT_SOURCE_DIR}/tests/test_dynamic_replay_followup.cpp)
+endif()

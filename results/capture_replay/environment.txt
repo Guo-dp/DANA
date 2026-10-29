@@ -1,0 +1,75 @@
+2026-10-02T11:17:34+00:00
+gpu02
+Linux gpu02 6.17.0-35-generic #35~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 19:30:42 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+cmake version 3.28.3
+
+CMake suite maintained and supported by Kitware (kitware.com/cmake).
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           43 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  128
+On-line CPU(s) list:                     0-127
+Vendor ID:                               AuthenticAMD
+Model name:                              AMD EPYC 7542 32-Core Processor
+CPU family:                              23
+Model:                                   49
+Thread(s) per core:                      2
+Core(s) per socket:                      32
+Socket(s):                               2
+Stepping:                                0
+Frequency boost:                         enabled
+CPU(s) scaling MHz:                      47%
+CPU max MHz:                             3408.1079
+CPU min MHz:                             1500.0000
+BogoMIPS:                                5788.67
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es
+Virtualization:                          AMD-V
+L1d cache:                               2 MiB (64 instances)
+L1i cache:                               2 MiB (64 instances)
+L2 cache:                                32 MiB (64 instances)
+L3 cache:                                256 MiB (16 instances)
+NUMA node(s):                            8
+NUMA node0 CPU(s):                       0-7,64-71
+NUMA node1 CPU(s):                       8-15,72-79
+NUMA node2 CPU(s):                       16-23,80-87
+NUMA node3 CPU(s):                       24-31,88-95
+NUMA node4 CPU(s):                       32-39,96-103
+NUMA node5 CPU(s):                       40-47,104-111
+NUMA node6 CPU(s):                       48-55,112-119
+NUMA node7 CPU(s):                       56-63,120-127
+Vulnerability Gather data sampling:      Not affected
+Vulnerability Ghostwrite:                Not affected
+Vulnerability Indirect target selection: Not affected
+Vulnerability Itlb multihit:             Not affected
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Not affected
+Vulnerability Old microcode:             Not affected
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Mitigation; untrained return thunk; SMT enabled with STIBP protection
+Vulnerability Spec rstack overflow:      Mitigation; Safe RET
+Vulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+Vulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Vulnerability Spectre v2:                Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Not affected
+Vulnerability Vmscape:                   Mitigation; IBPB before exit to userspace
+               total        used        free      shared  buff/cache   available
+Mem:           503Gi        65Gi       145Gi       160Mi       298Gi       437Gi
+Swap:          8.0Gi       8.0Gi        46Mi
+baseline_ref=c10676c0056b5b9a2c35e15b8361422bc194332f
+threads=1 repetitions=5 warmup_queries=40 measured_queries_per_phase=400 k=10 ef=128
+18571a6034d36d76941e5fcf6fe886a2d4f6462789393d3dfa640bd345c73ec8  <campaign>/current/include/dynamic_dana.h
+a8a7df077a1271d3294f3d9f961de3b4b000362956003fdc58ee0040736386c0  <campaign>/current/src/dynamic_dana.cc
+f69ee8c52532b8ca8c3defcc43871a39bcbc3b3f8a56f1c8de9c9ab73637db11  <campaign>/current/tests/test_dynamic_stable_ids.cpp
+e726451dadd57676cb2c20737c624c7c37161c02a66a63f78dd0aa775466a64b  <campaign>/current/tests/test_dynamic_capture_replay.cpp
+0cb0863941f81bb79321141912ad04fdadc09b1ce56e747a1739d85f050ec374  <campaign>/baseline/include/dynamic_dana.h
+4106df576af690a8fa9ceee97675205c9485627d9d30d5c192b93576f7c1e9d5  <campaign>/baseline/src/dynamic_dana.cc
