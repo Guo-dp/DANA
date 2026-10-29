@@ -170,10 +170,20 @@ The checked-in runner is the authoritative source for path overrides and sweep p
 Run the growing-Delta sweep after preparing DEEP indexes:
 
 ```bash
-bash scripts/run_deep_dynamic_sweep.sh
+bash scripts/run_deep_dynamic_sweep.sh verify
+bash scripts/run_deep_dynamic_sweep.sh growth
+bash scripts/run_deep_dynamic_sweep.sh breakdown
+bash scripts/run_deep_dynamic_sweep.sh threshold
+# Full 5% cycle: 166667 operations of each type; rebuilding is expensive.
+bash scripts/run_deep_dynamic_sweep.sh rebuild
 ```
 
-The runner evaluates update counts `1000 5000 10000 20000 50000`, records insert/update/delete stages, and checks the expected Delta size. For snapshot rebuilding:
+The runner requires the dimension-matched DEEP-10M/public-10K files (96D).
+Growth uses equal insert/update/delete counts up to 100000 (200000 Delta entries);
+breakdown uses insert-only 0/50K/100K states; threshold samples 0.5/1/2/5/10%.
+Rebuild uses 1000 queries and construction `M=16, ef_construction=100, ef_max=400`.
+Other stages use 100 queries; override `EVAL_QUERIES` explicitly. Output directories
+are new campaigns, never overwrites of historical paper measurements. For snapshot rebuilding:
 
 ```bash
 bash scripts/dynamic/rebuild_dana_snapshot.sh \
@@ -279,6 +289,33 @@ See `docs/STABLE_ID_REBUILD_REGRESSION.md` for the reference model, saved ID
 allocation high-water mark, legacy-snapshot boundary, and manuscript scope.
 
 ## 6. Result Verification
+
+Recovered metric-only historical records and source-log SHA-256 values are in
+`results/paper_evidence.csv`. Check the records and public EMA summaries with:
+
+```bash
+python3 scripts/paper_evidence.py
+python3 scripts/baselines/audit_dana_ema_reproducibility.py
+python3 scripts/paper_evidence.py --file results/replay_followup/maintenance_regression.csv
+```
+
+The default EMA audit recomputes the ten operating points from fifty per-run
+summaries. It does not claim to re-evaluate omitted query JSONL, pooled quantiles,
+or past binary/index identities. Full historical auditing explicitly requires
+`--scope historical --archive-root BATCHES --source-root MATCHING_SOURCE --output NEW_DIR`.
+
+Current deployment/field/heap contracts require no external dataset:
+
+```bash
+OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup contracts /tmp/dana-contracts
+```
+
+Dynamic CLIs accept `-indexed_attrs none` or `0,2` and `-query_attrs "0 2"`.
+Static query CSVs can append `query_attrs` with space-separated IDs. No applicable
+deployed attribute routes to exact live-Base search plus the Delta heap. See
+`docs/CONTROLLED_ABLATION_AND_DYNAMIC_AUDIT.md` for the actual frontier, tie,
+small-range and tombstone policy; the historical search is not described as a
+uniform stable-ID/lazy-deletion implementation.
 
 Sequential post-capture replay and its small performance regression are documented
 in [docs/CAPTURE_REPLAY_REGRESSION.md](docs/CAPTURE_REPLAY_REGRESSION.md).

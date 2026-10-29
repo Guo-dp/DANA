@@ -297,11 +297,13 @@ bool DataWrapper::passFilter(unsigned original_id,
         return false;
     }
 
-    if (query.bounds.size() != attr_count) {
+    if (query.bounds.size() != attr_count ||
+        (!query.active_attributes.empty() && query.active_attributes.size() != attr_count)) {
         return false;
     }
 
     for (unsigned attr = 0; attr < attr_count; ++attr) {
+        if (!query.constrains(attr)) continue;
         const float value = attrs[attr][original_id];
 
         if (value < query.bounds[attr].low ||

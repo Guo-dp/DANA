@@ -31,6 +31,9 @@ public:
         std::size_t graph_distance_evaluations = 0;
         std::size_t base_rerank_distance_evaluations = 0;
         std::size_t delta_distance_evaluations = 0;
+        std::size_t delta_candidates_retained = 0;
+        std::size_t merge_candidates = 0;
+        bool exact_fallback = false;
         unsigned navigation_attr = 0;
         double base_search_ms = 0.0;
         double delta_scan_ms = 0.0;
@@ -89,7 +92,8 @@ public:
         std::vector<std::vector<unsigned>> rank_to_base_local,
         std::vector<unsigned> base_local_to_original = {},
         double rebuild_fraction = 0.05,
-        std::uint64_t next_original_id = 0);
+        std::uint64_t next_original_id = 0,
+        std::vector<unsigned> indexed_attributes = {});
 
     unsigned insert(const float *vector,
                     const std::vector<float> &attrs);
@@ -104,6 +108,9 @@ public:
 
     void updateAttributes(unsigned original_id,
                           const std::vector<float> &attrs);
+
+    void updateFields(unsigned original_id, const float *vector,
+                      const std::vector<std::pair<unsigned, float>> &attributes);
 
     void erase(unsigned original_id);
 

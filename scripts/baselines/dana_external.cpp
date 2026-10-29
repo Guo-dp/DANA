@@ -42,14 +42,20 @@ int main(int argc, char** argv) {
         }
         auto cases = readFilters(cfg.filter_path, cfg.attr_count);
         auto search = [&](const FilterCase& t, double& hops, double& dist) {
-            size_t slot = 0;
+            size_t slot = attrs.size();
+            for (size_t s = 0; s < attrs.size(); ++s)
+                if (t.filter.constrains(attrs[s]) && (slot == attrs.size() ||
+                    rankRangeWidth(data, t.filter, attrs[s]) < rankRangeWidth(data, t.filter, attrs[slot]))) slot = s;
+            hops = dist = 0;
+            if (slot == attrs.size()) return exactTopK(data, data.querys.at(t.query_idx), t.filter, cfg.query_k, &dist);
             if (cfg.nav_mode == "fixed") {
                 auto it = std::find(attrs.begin(), attrs.end(), cfg.fixed_attr);
                 if (it == attrs.end()) throw std::runtime_error("Unindexed fixed attr");
                 slot = it - attrs.begin();
             } else {
-                auto best = rankRangeWidth(data, t.filter, attrs[0]);
+                auto best = rankRangeWidth(data, t.filter, attrs[slot]);
                 for (size_t s = 1; s < attrs.size(); ++s) {
+                    if (!t.filter.constrains(attrs[s])) continue;
                     auto width = rankRangeWidth(data, t.filter, attrs[s]);
                     if (width < best) { best = width; slot = s; }
                 }

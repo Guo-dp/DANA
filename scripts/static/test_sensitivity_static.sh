@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Legacy single-attribute parameter sweep; current DANA workflows: REPRODUCIBILITY.md.
 set -euo pipefail
 
 # ------------------------------------------------------------------------------

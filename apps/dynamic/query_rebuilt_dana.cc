@@ -39,6 +39,8 @@ struct Config {
     int query_k = 10;
 
     unsigned attr_count = 3;
+    std::string indexed_attrs = "all";
+    std::string query_attrs = "all";
     unsigned search_ef = 512;
     unsigned eval_queries = 100;
 
@@ -110,6 +112,8 @@ Config parseArgs(int argc, char **argv) {
         else if (arg == "-stable_mapping_path")
             cfg.stable_mapping_path =
                 value("-stable_mapping_path");
+        else if (arg == "-indexed_attrs") cfg.indexed_attrs = value("-indexed_attrs");
+        else if (arg == "-query_attrs") cfg.query_attrs = value("-query_attrs");
         else if (arg == "-attr_count")
             cfg.attr_count =
                 std::stoul(value("-attr_count"));
@@ -607,6 +611,7 @@ EvalResult evaluate(
                 for (std::size_t attr = 0;
                      attr < point.attrs.size();
                      ++attr) {
+                    if (!test.filter.constrains(static_cast<unsigned>(attr))) continue;
                     const float value = point.attrs[attr];
                     const auto &bound =
                         test.filter.bounds[attr];
@@ -727,14 +732,20 @@ int main(int argc, char **argv) {
             dsg::DynamicSegmentGraph>> owned_indexes;
 
         std::vector<dsg::DynamicSegmentGraph *>
-            index_ptrs;
+            index_ptrs(cfg.attr_count, nullptr);
 
         std::vector<std::vector<unsigned>>
-            rank_to_original;
+            rank_to_original(cfg.attr_count);
+        MultiRangeQuery deployment;
+        deployment.bounds.resize(cfg.attr_count);
+        auto selection = cfg.indexed_attrs;
+        std::replace(selection.begin(), selection.end(), ',', ' ');
+        deployment.selectAttributes(selection);
 
         for (unsigned attr = 0;
              attr < cfg.attr_count;
              ++attr) {
+            if (!deployment.constrains(attr)) continue;
             auto current_data =
                 std::make_unique<DataWrapper>(
                     cfg.query_num,
@@ -766,14 +777,14 @@ int main(int argc, char **argv) {
                 std::to_string(attr) +
                 ".dsg");
 
-            index_ptrs.push_back(graph.get());
+            index_ptrs[attr] = graph.get();
 
-            rank_to_original.push_back(
+            rank_to_original[attr] =
                 readRankMapping(
                     cfg.reordered_data_root +
                     "/rank_to_original.attr" +
                     std::to_string(attr) +
-                    ".ibin"));
+                    ".ibin");
 
             ranked_data.push_back(
                 std::move(current_data));
@@ -802,10 +813,11 @@ int main(int argc, char **argv) {
             cfg.rebuild_fraction,
             next_original_id);
 
-        const auto filters =
+        auto filters =
             readFilters(
                 cfg.filter_path,
                 cfg.attr_count);
+        for (auto &test : filters) test.filter.selectAttributes(cfg.query_attrs);
 
         std::unordered_set<unsigned> inserted_ids;
         std::unordered_set<unsigned> updated_ids;

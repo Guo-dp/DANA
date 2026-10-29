@@ -22,6 +22,9 @@ jobs:
           python scripts/verify_bundled_data.py
           python -m unittest discover -s tests -p 'test_dynamic_cycle_data.py'
           python scripts/summarize_capture_replay.py results/capture_replay
+          python scripts/baselines/audit_dana_ema_reproducibility.py
+          python scripts/paper_evidence.py
+          python scripts/paper_evidence.py --file results/replay_followup/maintenance_regression.csv
       - name: Configure and build C++ targets
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -59,6 +62,8 @@ jobs:
           grep -q '^ALL PASS randomized_sequential_replay seeds=5 rounds=25 operations=25000' replay-random-test.log
           OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup quality "$RUNNER_TEMP/dana-replay-quality" | tee replay-quality-test.log
           grep -q '^ALL PASS replay_quality_curve graph_seeds=3 rows=27' replay-quality-test.log
+          OMP_NUM_THREADS=1 ./build/apps/test_dynamic_replay_followup contracts "$RUNNER_TEMP/dana-contracts" | tee contracts.log
+          grep -q '^ALL PASS deployment_fields_ties_and_heap' contracts.log
       - name: Run integrated DANA smoke test
         run: |
           ./build/apps/query_dana_benchmark \
@@ -74,3 +79,42 @@ jobs:
             -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive \
             | tee smoke.log
           grep -Eq '^all[[:space:]]+queries=3 recall=1\.0000' smoke.log
+      - name: Verify static exact fallback against independent L2
+        run: |
+          python3 - <<'PY'
+          import csv, os
+          from pathlib import Path
+          rows = list(csv.DictReader(open('data/vector_calc_sanity/filters.csv')))
+          with (Path(os.environ['RUNNER_TEMP']) / 'partial.csv').open('w', newline='') as f:
+              writer = csv.DictWriter(f, fieldnames=list(rows[0]) + ['query_attrs'])
+              writer.writeheader()
+              writer.writerows(dict(r, query_attrs='0') for r in rows)
+          PY
+          args=(-dataset sanity -N 8 -dataset_path data/vector_calc_sanity/base.8.fbin
+            -query_path data/vector_calc_sanity/query.3.fbin -attr_path data/vector_calc_sanity/attrs.csv
+            -attr_count 3 -query_num 3 -query_k 3 -search_ef 8 -nav_mode adaptive
+            -index_root index/static/vector_calc_sanity/dana -reordered_data_root data/vector_calc_sanity/dana)
+          ./build/apps/dana_external "${args[@]}" -indexed_attrs none -filter_path data/vector_calc_sanity/filters.csv -per_query_path "$RUNNER_TEMP/fallback.jsonl"
+          ./build/apps/dana_external "${args[@]}" -indexed_attrs 2 -filter_path "$RUNNER_TEMP/partial.csv" -per_query_path "$RUNNER_TEMP/partial.jsonl"
+          python3 - <<'PY'
+          import csv, json, os, struct
+          from pathlib import Path
+          def vectors(name):
+              b = Path(name).read_bytes()
+              n, d = struct.unpack_from('<II', b)
+              return [struct.unpack_from('<' + 'f' * d, b, 8 + i * d * 4) for i in range(n)]
+          base = vectors('data/vector_calc_sanity/base.8.fbin')
+          queries = vectors('data/vector_calc_sanity/query.3.fbin')
+          attrs = [list(map(float, row)) for row in csv.reader(open('data/vector_calc_sanity/attrs.csv'))]
+          filters = list(csv.DictReader(open('data/vector_calc_sanity/filters.csv')))
+          for name in ('fallback', 'partial'):
+              out = [json.loads(line) for line in (Path(os.environ['RUNNER_TEMP']) / (name + '.jsonl')).read_text().splitlines()]
+              assert len(out) == 3
+              for f, result in zip(filters, out):
+                  q = queries[int(f['query_idx'])]
+                  active = range(3) if name == 'fallback' else (0,)
+                  valid = [i for i in range(8) if all(float(f[f'attr{a}_low']) <= attrs[i][a+1] <= float(f[f'attr{a}_high']) for a in active)]
+                  expected = sorted(valid, key=lambda i: (sum((x-y)**2 for x, y in zip(q, base[i])), i))[:3]
+                  assert result['ids'] == expected, (name, result, expected)
+          print('ALL PASS static_fallback_and_partial_predicates')
+          PY

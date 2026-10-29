@@ -13,7 +13,8 @@ DynamicDanaIndex::DynamicDanaIndex(
     std::vector<std::vector<unsigned>> rank_to_base_local,
     std::vector<unsigned> base_local_to_original,
     double rebuild_fraction,
-    std::uint64_t next_original_id)
+    std::uint64_t next_original_id,
+    std::vector<unsigned> indexed_attributes)
     : base_data_(base_data),
       indexes_(std::move(indexes)),
       rank_to_base_local_(std::move(rank_to_base_local)),
@@ -26,16 +27,35 @@ DynamicDanaIndex::DynamicDanaIndex(
             "DynamicDanaIndex requires base data");
     }
 
-    if (indexes_.empty() ||
-        indexes_.size() != rank_to_base_local_.size()) {
+    if (indexes_.size() != rank_to_base_local_.size()) {
         throw std::runtime_error(
             "Index and rank-mapping counts do not match");
     }
 
-    if (indexes_.size() != base_data_->attr_count) {
-        throw std::runtime_error(
-            "One DSG is required for each attribute");
+    if (!indexed_attributes.empty()) {
+        if (indexed_attributes.size() != indexes_.size())
+            throw std::runtime_error("Deployment attribute/index count mismatch");
+        std::vector<DynamicSegmentGraph *> deployed(base_data_->attr_count, nullptr);
+        std::vector<std::vector<unsigned>> mappings(base_data_->attr_count);
+        std::unordered_set<unsigned> seen;
+        for (std::size_t slot = 0; slot < indexes_.size(); ++slot) {
+            const unsigned attr = indexed_attributes[slot];
+            if (attr >= base_data_->attr_count || !seen.insert(attr).second || !indexes_[slot])
+                throw std::runtime_error("Invalid deployed attribute");
+            deployed[attr] = indexes_[slot];
+            mappings[attr] = std::move(rank_to_base_local_[slot]);
+        }
+        indexes_ = std::move(deployed);
+        rank_to_base_local_ = std::move(mappings);
+    } else if (indexes_.empty()) {
+        indexes_.resize(base_data_->attr_count, nullptr);
+        rank_to_base_local_.resize(base_data_->attr_count);
+    } else if (indexes_.size() != base_data_->attr_count) {
+        throw std::runtime_error("Partial deployment requires explicit attribute IDs");
     }
+    for (unsigned attr = 0; attr < indexes_.size(); ++attr)
+        if (indexes_[attr] && rank_to_base_local_[attr].size() != static_cast<std::size_t>(base_data_->data_size))
+            throw std::runtime_error("Deployed rank mapping size mismatch");
 
     if (rebuild_fraction_ <= 0.0) {
         throw std::runtime_error(
@@ -206,6 +226,32 @@ void DynamicDanaIndex::erase(unsigned original_id) {
     if (active_capture_token_) journal_.push_back(std::move(operation));
 }
 
+void DynamicDanaIndex::updateFields(
+    unsigned original_id, const float *vector,
+    const std::vector<std::pair<unsigned, float>> &attributes) {
+    std::vector<float> values;
+    const float *previous = nullptr;
+    const auto delta = delta_.find(original_id);
+    if (delta != delta_.end()) {
+        values = delta->second.attrs;
+        previous = delta->second.vector.data();
+    } else {
+        const auto base = original_to_base_local_.find(original_id);
+        if (base == original_to_base_local_.end() || base_tombstones_.count(original_id))
+            throw std::runtime_error("Cannot update fields of an unknown ID");
+        previous = base_data_->nodes[base->second];
+        for (unsigned attr = 0; attr < base_data_->attr_count; ++attr)
+            values.push_back(base_data_->attrs[attr][base->second]);
+    }
+    std::unordered_set<unsigned> seen;
+    for (const auto &entry : attributes) {
+        if (entry.first >= values.size() || !seen.insert(entry.first).second)
+            throw std::runtime_error("Invalid or duplicate updated attribute");
+        values[entry.first] = entry.second;
+    }
+    update(original_id, vector ? vector : previous, values);
+}
+
 void DynamicDanaIndex::prepareMutation() {
     if (committed_sequence_ == std::numeric_limits<std::uint64_t>::max())
         throw std::runtime_error("Operation sequence is exhausted");
@@ -331,6 +377,7 @@ bool DynamicDanaIndex::deltaPassesFilter(
     for (std::size_t attr = 0;
          attr < point.attrs.size();
          ++attr) {
+        if (!filter.constrains(static_cast<unsigned>(attr))) continue;
         const float value = point.attrs[attr];
 
         if (value < filter.bounds[attr].low ||
@@ -363,13 +410,14 @@ float DynamicDanaIndex::squaredL2(
 unsigned DynamicDanaIndex::chooseNavigationAttribute(
     const MultiRangeQuery &filter) const {
 
-    unsigned best_attr = 0;
+    unsigned best_attr = std::numeric_limits<unsigned>::max();
     std::size_t best_span =
         std::numeric_limits<std::size_t>::max();
 
     for (unsigned attr = 0;
          attr < indexes_.size();
          ++attr) {
+        if (!indexes_[attr] || !filter.constrains(attr)) continue;
         const auto range =
             base_data_->valueRangeToRankRange(
                 attr,
@@ -405,11 +453,7 @@ std::vector<unsigned> DynamicDanaIndex::search(
         return {};
     }
 
-    if (filter.bounds.size() !=
-        base_data_->attr_count) {
-        throw std::runtime_error(
-            "Query attribute count mismatch");
-    }
+    filter.validate(base_data_->attr_count);
 
     last_stats_ = SearchStats{};
     last_stats_.tombstones =
@@ -424,7 +468,9 @@ std::vector<unsigned> DynamicDanaIndex::search(
     last_stats_.navigation_attr =
         navigation_attr;
 
-    const auto rank_bound =
+    const bool fallback = navigation_attr == std::numeric_limits<unsigned>::max();
+    last_stats_.exact_fallback = fallback;
+    const auto rank_bound = fallback ? std::make_pair(1U, 0U) :
         base_data_->valueRangeToRankRange(
             navigation_attr,
             filter.bounds[navigation_attr].low,
@@ -438,6 +484,22 @@ std::vector<unsigned> DynamicDanaIndex::search(
     };
 
     std::vector<Candidate> merged;
+    const auto better = [](const Candidate &left, const Candidate &right) {
+        return left.distance < right.distance ||
+               (left.distance == right.distance && left.original_id < right.original_id);
+    };
+    std::priority_queue<Candidate, std::vector<Candidate>, decltype(better)> best_base(better);
+    if (fallback) {
+        for (unsigned local = 0; local < base_local_to_original_.size(); ++local) {
+            const unsigned id = stableIdOfBaseLocal(local);
+            if (base_tombstones_.count(id) || !base_data_->passFilter(local, filter)) continue;
+            best_base.push({squaredL2(query, base_data_->nodes[local]), id, 0, false});
+            ++last_stats_.base_rerank_distance_evaluations;
+            if (best_base.size() > top_k) best_base.pop();
+        }
+        last_stats_.base_candidates = best_base.size();
+        while (!best_base.empty()) { merged.push_back(best_base.top()); best_base.pop(); }
+    }
 
     if (rank_bound.first <= rank_bound.second) {
         DynamicSegmentGraph *index =
@@ -531,6 +593,7 @@ std::vector<unsigned> DynamicDanaIndex::search(
     const auto delta_start = base_end;
 
     last_stats_.delta_scanned = delta_.size();
+    std::priority_queue<Candidate, std::vector<Candidate>, decltype(better)> best_delta(better);
 
     for (const auto &entry : delta_) {
         const DeltaPoint &point = entry.second;
@@ -539,13 +602,17 @@ std::vector<unsigned> DynamicDanaIndex::search(
             continue;
         }
 
-        merged.push_back({
+        best_delta.push({
             squaredL2(query, point.vector.data()),
             point.original_id,
             point.version,
             true});
         ++last_stats_.delta_distance_evaluations;
+        if (best_delta.size() > top_k) best_delta.pop();
     }
+    last_stats_.delta_candidates_retained = best_delta.size();
+    while (!best_delta.empty()) { merged.push_back(best_delta.top()); best_delta.pop(); }
+    last_stats_.merge_candidates = merged.size();
 
     const auto delta_end =
         std::chrono::steady_clock::now();
@@ -622,6 +689,7 @@ std::vector<unsigned> DynamicDanaIndex::searchExact(
     const float *query,
     const MultiRangeQuery &filter,
     unsigned top_k) const {
+    filter.validate(base_data_->attr_count);
 
     if (query == nullptr || top_k == 0) {
         return {};

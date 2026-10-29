@@ -21,7 +21,7 @@ mkdir -p "$LOG_DIR"
 
 echo "[1/3] Preparing attribute-ordered vectors"
 
-python3 scripts/prepare_dana_data.py \
+python3 "${REORDER_SCRIPT:-scripts/prepare_dana_data.py}" \
   --base "$SNAPSHOT_DIR/base.snapshot.fbin" \
   --attrs "$SNAPSHOT_DIR/attrs.snapshot.csv" \
   --attr-count "$ATTR_COUNT" \
@@ -41,7 +41,7 @@ for ((attr=0; attr<ATTR_COUNT; ++attr)); do
     -index_path "$INDEX_DIR/attr${attr}.dsg" \
     -k 16 \
     -ef_construction 100 \
-    -ef_max 200 \
+    -ef_max "${DSG_EF_MAX:-200}" \
     -alpha 1.0 \
     | tee "$LOG_DIR/build_attr${attr}.log"
 

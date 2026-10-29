@@ -1,8 +1,9 @@
-"""Audit the archived DANA/EMA paper results without rerunning search."""
+"""Validate public summaries, or explicitly audit a complete historical archive."""
 
 from __future__ import annotations
 
 import csv
+import argparse
 import hashlib
 import json
 import math
@@ -338,7 +339,53 @@ def verify_timing_disclosure() -> dict:
     }
 
 
+def public_audit() -> None:
+    root = ROOT / "results/ema_comparison"
+    points = rows(root / "paper_points.csv")
+    repeats = rows(root / "repetitions.csv")
+    assert len(points) == 10 and len(repeats) == 50
+    used = set()
+    for point in points:
+        key = (point["workload"], point["method"], point["ef"])
+        assert key not in used
+        used.add(key)
+        group = [r for r in repeats if (r["workload"], r["method"], r["ef"]) == key]
+        assert len(group) == 5 and {int(r["run"]) for r in group} == set(range(1, 6))
+        assert all(int(r["queries"]) > 0 and float(r["mean_ms"]) > 0 for r in group)
+        n = sum(int(r["queries"]) for r in group)
+        latency = sum(int(r["queries"]) * float(r["mean_ms"]) for r in group) / n
+        recall = sum(int(r["queries"]) * float(r["recall"]) for r in group) / n
+        close(point["mean_ms"], latency)
+        close(point["qps"], 1000 / latency)
+        close(point["recall"], recall)
+        close(point["std_run_mean_ms"], statistics.stdev(float(r["mean_ms"]) for r in group))
+        assert recall >= float(point["threshold"])
+    assert all((r["workload"], r["method"], r["ef"]) in used for r in repeats)
+    print(json.dumps({"status": "PASS_PUBLIC_SUMMARIES", "points": len(points),
+                      "runs": len(repeats), "scope": "per-run means, pooled QPS and recall floors",
+                      "not_recomputed": "raw-query distances, pooled quantiles, historical source/index identity"}))
+
+
 def main() -> None:
+    global ROOT, PAPER, APP, OUT_JSON, OUT_MD
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scope", choices=("public", "historical"), default="public")
+    parser.add_argument("--archive-root", type=Path, help="Directory containing both complete historical batches")
+    parser.add_argument("--source-root", type=Path, help="Source snapshot matching the historical recorded hashes")
+    parser.add_argument("--output", type=Path, help="New directory for historical audit outputs")
+    args = parser.parse_args()
+    if args.scope == "public":
+        public_audit()
+        return
+    if not args.archive_root or not args.source_root or not args.output:
+        parser.error("Historical mode requires --archive-root, --source-root and --output")
+    ROOT = args.source_root.resolve()
+    PAPER = args.archive_root / "paper_comparison_v1"
+    APP = args.archive_root / "app_final_interleaved_v1"
+    if args.output.exists():
+        parser.error("Use a new output directory; archived audit reports are not overwritten")
+    args.output.mkdir(parents=True)
+    OUT_JSON, OUT_MD = args.output / "audit.json", args.output / "report.md"
     checks = {
         "archived_code_and_library_version": verify_archived_code_hashes(),
         "paper_batch_raw_recalculation": verify_paper_batch(),

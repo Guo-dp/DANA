@@ -347,12 +347,92 @@ void qualityCampaign(const fs::path &root) {
     std::cout << "ALL PASS replay_quality_curve graph_seeds=3 rows=27\n";
 }
 
+void contractCampaign(const fs::path &root) {
+    fs::create_directories(root);
+    Reference reference;
+    for (unsigned i = 0; i < 64; ++i) reference.live[i * 7 + 2] = generated(i);
+    reference.next_id = 500;
+    Bundle bundle(reference.live, reference.next_id, root / "graphs", true);
+    Index none(bundle.base.get(), {}, {}, bundle.stable_ids, 0.05, 500);
+    Index subset(bundle.base.get(), {bundle.graphs[2].get()}, {bundle.ranks[2]},
+                 bundle.stable_ids, 0.05, 500, {2});
+    const auto query = generated(17).vector;
+    const unsigned changed = reference.live.begin()->first;
+    auto expected_point = reference.live.at(changed);
+    none.updateFields(changed, nullptr, {{1, 77}});
+    subset.updateFields(changed, nullptr, {{1, 77}});
+    expected_point.attrs[1] = 77;
+    reference.put(changed, expected_point);
+    const auto replacement_vector = generated(901).vector;
+    none.updateFields(changed, replacement_vector.data(), {{2, 88}});
+    subset.updateFields(changed, replacement_vector.data(), {{2, 88}});
+    expected_point.vector = replacement_vector;
+    expected_point.attrs[2] = 88;
+    reference.put(changed, expected_point);
+    mustThrow([&] { none.updateFields(changed, nullptr, {{0, 1}, {0, 2}}); }, "duplicate field accepted");
+    mustThrow([&] { none.updateFields(changed, nullptr, {{3, 1}}); }, "invalid field accepted");
+    for (unsigned i = 0; i < 200; ++i) {
+        Point point{query, {1, 1, 1}};
+        const auto id = none.insert(point.vector.data(), point.attrs);
+        require(subset.insert(point.vector.data(), point.attrs) == id, "subset allocator mismatch");
+        reference.put(id, point);
+        if (i % 7 == 0) { none.erase(id); subset.erase(id); reference.erase(id); }
+    }
+    checkSnapshot(none, reference, "contract_fields");
+    checkSnapshot(subset, reference, "contract_subset");
+    std::ofstream csv(root / "contracts.csv");
+    csv << "case,queries,state_violations\n";
+    unsigned queries = 0;
+    for (const auto &selection : {"none", "0", "0 1", "all"}) {
+        MultiRangeQuery filter;
+        filter.bounds.resize(3);
+        for (auto &bound : filter.bounds) { bound.low = 0; bound.high = 12; }
+        filter.selectAttributes(selection);
+        for (unsigned k : {1U, 3U, 10U, 1000U}) {
+            auto materialized = filter;
+            materialized.active_attributes.clear();
+            for (unsigned attr = 0; attr < 3; ++attr) if (!filter.constrains(attr)) {
+                materialized.bounds[attr].low = -10000;
+                materialized.bounds[attr].high = 10000;
+            }
+            const auto expected = referenceQuery(reference, query, materialized, k);
+            require(none.search(query.data(), filter, k, 128) == expected,
+                    "empty deployment differs from independent full sort");
+            require(none.lastStats().exact_fallback && none.lastStats().delta_candidates_retained <= k &&
+                    none.lastStats().merge_candidates <= none.lastStats().base_candidates + k,
+                    "fallback/Delta heap bound violated");
+            const auto actual = subset.search(query.data(), filter, k, 128);
+            if (!filter.constrains(2)) require(actual == expected && subset.lastStats().exact_fallback,
+                                             "disjoint deployment did not fall back exactly");
+            else require(!subset.lastStats().exact_fallback && subset.lastStats().navigation_attr == 2,
+                         "attribute ID confused with subset slot");
+            for (auto id : actual) require(reference.live.count(id) && passes(reference.live.at(id), materialized),
+                                          "subset result violates committed state");
+            queries += 2;
+        }
+    }
+    csv << "deployment_fields_ties_and_heap," << queries << ",0\n";
+    // Capture a partially deployed instance, then replay a field-only update.
+    const auto captured_reference = reference;
+    const auto capture = subset.captureForRebuild();
+    subset.updateFields(changed, nullptr, {{0, 999}});
+    reference.live.at(changed).attrs[0] = 999;
+    reference.delta_ids.insert(changed);
+    const auto journal = subset.journalSince(capture);
+    Bundle replacement(captured_reference.live, capture.next_original_id);
+    replacement.index->replayAfterCapture(capture, journal);
+    checkSnapshot(*replacement.index, reference, "contract_subset_replay");
+    require(csv.good(), "contract CSV write failed");
+    std::cout << "ALL PASS deployment_fields_ties_and_heap queries=" << queries << " state_violations=0\n";
+}
+
 int main(int argc, char **argv) {
     try {
-        require(argc == 3, "Usage: test_dynamic_replay_followup random|quality OUTPUT_DIR");
+        require(argc == 3, "Usage: test_dynamic_replay_followup random|quality|contracts OUTPUT_DIR");
         const fs::path root(argv[2]);
         if (std::string(argv[1]) == "random") randomCampaign(root);
         else if (std::string(argv[1]) == "quality") qualityCampaign(root);
+        else if (std::string(argv[1]) == "contracts") contractCampaign(root);
         else throw std::runtime_error("unknown test mode");
         return 0;
     } catch (const std::exception &error) {

@@ -1,6 +1,19 @@
 # Experiment Results
 
-This compact artifact retains `ema_comparison/` paper operating points and five-run statistics, `dynamic_deep10m/` default-threshold recovery records, `stable_id_rebuild/` regression evidence, and `followup_experiments/` aggregate logs and summaries for navigation-admission ablations and dynamic committed-state correctness audits. Raw per-query CSV files, the complete historical log bundle and exploratory timing sweeps are omitted for a compact release. Runners can regenerate query-level output; retained navigation-admission summaries can be recomputed from the aggregate logs alone.
+This compact artifact retains `ema_comparison/` paper operating points and five-run statistics, `dynamic_deep10m/` default-threshold recovery records, and `followup_experiments/` aggregate navigation-admission and committed-state audits. `capture_replay/` and `replay_followup/` contain independent sequential regression evidence. Full historical query outputs and indexes remain outside Git.
+
+`paper_evidence.csv` restores metric-only excerpts from 58 original logs covering
+historical HNSW comparisons, hybrid routing, build costs, attribute-count curves,
+Delta growth and trigger checks. Each excerpt records its original line and source
+log SHA-256. These hashes bind the inspected logs, not historical binaries or indexes.
+Table 6's complete original routing/calibration search is not reconstructed by this CSV.
+
+`replay_followup/contracts.csv` covers the new API branches and bounded Delta heap.
+`maintenance_regression.csv` retains 60 records from five alternating before/after
+runs on synthetic-1K and DEEP-1M-96D. Both use k=10, ef=128/1024 respectively;
+DEEP uses the first 100 queries and 50K each of insert/update/delete (seed 2031).
+The source logs and measured binaries are hashed. These new measurements do not
+replace the historical DEEP-10M table or establish a consistent speedup.
 
 `followup_experiments/manifest.csv` records each retained file's relative path, byte count, SHA-256, and number of aggregate metric rows beginning with `all`.
 

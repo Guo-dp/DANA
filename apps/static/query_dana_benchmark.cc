@@ -72,6 +72,7 @@ std::vector<std::string> splitComma(const std::string &line) {
 std::vector<unsigned> parseIndexedAttrs(const std::string &text,
                                         unsigned attr_count) {
     std::vector<unsigned> attrs;
+    if (text == "none") return attrs;
 
     if (text.empty()) {
         for (unsigned attr = 0; attr < attr_count; ++attr) {
@@ -209,6 +210,8 @@ std::vector<FilterCase> readFilters(const std::string &path, unsigned attr_count
     std::vector<FilterCase> cases;
     std::string line;
     bool first = true;
+    bool has_profile = true;
+    std::size_t query_attrs_column = std::string::npos;
     while (std::getline(input, line)) {
         if (line.empty()) {
             continue;
@@ -216,27 +219,35 @@ std::vector<FilterCase> readFilters(const std::string &path, unsigned attr_count
         if (first) {
             first = false;
             if (line.find("query_idx") != std::string::npos) {
+                const auto header = splitComma(line);
+                has_profile = std::find(header.begin(), header.end(), "profile") != header.end();
+                for (std::size_t i = 0; i < header.size(); ++i)
+                    if (header[i] == "query_attrs") query_attrs_column = i;
                 continue;
             }
         }
 
         const auto columns = splitComma(line);
         const std::size_t minimum_columns =
-            3 + static_cast<std::size_t>(attr_count) * 2;
+            (has_profile ? 3 : 2) + static_cast<std::size_t>(attr_count) * 2;
         if (columns.size() < minimum_columns) {
             throw std::runtime_error("Malformed filter row: " + line);
         }
 
         FilterCase current;
         current.query_idx = std::stoul(columns[0]);
-        current.profile = columns[1];
-        current.filter.primary_attr = std::stoul(columns[2]);
+        current.profile = has_profile ? columns[1] : "sanity";
+        current.filter.primary_attr = std::stoul(columns[has_profile ? 2 : 1]);
         current.filter.bounds.resize(attr_count);
 
-        std::size_t position = 3;
+        std::size_t position = has_profile ? 3 : 2;
         for (unsigned attr = 0; attr < attr_count; ++attr) {
             current.filter.bounds[attr].low = std::stof(columns[position++]);
             current.filter.bounds[attr].high = std::stof(columns[position++]);
+        }
+        if (query_attrs_column != std::string::npos) {
+            if (query_attrs_column >= columns.size()) throw std::runtime_error("Missing query_attrs value");
+            current.filter.selectAttributes(columns[query_attrs_column]);
         }
         cases.push_back(std::move(current));
     }
@@ -282,7 +293,7 @@ float squaredL2(const float *lhs,
 std::vector<unsigned> exactTopK(const DataWrapper &data,
                                 const float *query,
                                 const MultiRangeQuery &filter,
-                                std::size_t k) {
+                                std::size_t k, double *distance_count = nullptr) {
     std::vector<std::pair<float, unsigned>> candidates;
 
     for (unsigned original_id = 0;
@@ -295,6 +306,7 @@ std::vector<unsigned> exactTopK(const DataWrapper &data,
         candidates.emplace_back(
             squaredL2(query, data.nodes[original_id], data.data_dim),
             original_id);
+        if (distance_count) ++*distance_count;
     }
 
     std::sort(candidates.begin(), candidates.end());
@@ -439,12 +451,11 @@ std::unordered_map<std::string, Metrics> by_profile;
 
         auto chooseIndexedNavigationAttribute =
             [&](const MultiRangeQuery &filter) -> unsigned {
-                unsigned best_attr = indexed_attrs.front();
-                double best_score =
-                    static_cast<double>(rankRangeWidth(data, filter, best_attr)) *
-                    cfg.attr_weights.at(best_attr);
+                unsigned best_attr = cfg.attr_count;
+                double best_score = std::numeric_limits<double>::infinity();
 
                 for (const unsigned attr : indexed_attrs) {
+                    if (!filter.constrains(attr)) continue;
                     const double score =
                         static_cast<double>(rankRangeWidth(data, filter, attr)) *
                         cfg.attr_weights.at(attr);
@@ -471,32 +482,35 @@ std::unordered_map<std::string, Metrics> by_profile;
             const auto exact_end = std::chrono::steady_clock::now();
 
             unsigned navigation_attr = 0;
+            const auto eligible_attr = chooseIndexedNavigationAttribute(test.filter);
 
             if (cfg.nav_mode == "adaptive" ||
                 cfg.nav_mode == "weighted") {
                 navigation_attr =
-                    chooseIndexedNavigationAttribute(test.filter);
+                    eligible_attr;
             } else {
-                navigation_attr = static_cast<unsigned>(cfg.fixed_attr);
+                navigation_attr = eligible_attr == cfg.attr_count ? cfg.attr_count : static_cast<unsigned>(cfg.fixed_attr);
             }
 
-            if (navigation_attr >= selected_attr_count.size()) {
+            if (navigation_attr > selected_attr_count.size()) {
                 throw std::runtime_error(
                     "Navigation attribute is out of range");
             }
-            ++selected_attr_count[navigation_attr];
+            const bool fallback = navigation_attr == cfg.attr_count ||
+                (navigation_attr < cfg.attr_count && !test.filter.constrains(navigation_attr));
+            if (!fallback) ++selected_attr_count[navigation_attr];
 
             const int navigation_slot =
                 navigation_attr < attr_to_slot.size()
                     ? attr_to_slot[navigation_attr]
                     : -1;
 
-            if (navigation_slot < 0) {
+            if (navigation_slot < 0 && !fallback) {
                 throw std::runtime_error(
                     "navigation attribute is not indexed");
             }
 
-            const auto rank_bound = data.valueRangeToRankRange(
+            const auto rank_bound = fallback ? std::make_pair(1U, 0U) : data.valueRangeToRankRange(
                 navigation_attr,
                 test.filter.bounds[navigation_attr].low,
                 test.filter.bounds[navigation_attr].high);
@@ -504,6 +518,10 @@ std::unordered_map<std::string, Metrics> by_profile;
             std::vector<unsigned> graph;
 
             const auto graph_start = std::chrono::steady_clock::now();
+            double hops = 0, distances = 0, pruned = 0;
+            if (fallback) {
+                graph = exactTopK(data, query, test.filter, static_cast<std::size_t>(cfg.query_k), &distances);
+            }
 
             if (rank_bound.first <= rank_bound.second) {
                 auto &selected_index = *indexes[static_cast<std::size_t>(navigation_slot)];
@@ -522,6 +540,9 @@ std::unordered_map<std::string, Metrics> by_profile;
                     cfg.admission_mode == "hard_prune");
 
                 graph = selected_index.returned_nns;
+                hops = selected_index.last_hop_count();
+                distances = selected_index.last_distance_eval_count();
+                pruned = selected_index.last_hard_pruned_count();
             }
 
             const auto graph_end = std::chrono::steady_clock::now();
@@ -538,12 +559,9 @@ std::unordered_map<std::string, Metrics> by_profile;
                 metrics.recall_sum += recall;
                 metrics.graph_seconds += graph_seconds;
                 metrics.exact_seconds += exact_seconds;
-                metrics.hops_sum += static_cast<double>(
-                    indexes[static_cast<std::size_t>(navigation_slot)]->last_hop_count());
-                metrics.distance_sum += static_cast<double>(
-                    indexes[static_cast<std::size_t>(navigation_slot)]->last_distance_eval_count());
-                metrics.hard_pruned_sum += static_cast<double>(
-                    indexes[static_cast<std::size_t>(navigation_slot)]->last_hard_pruned_count());
+                metrics.hops_sum += hops;
+                metrics.distance_sum += distances;
+                metrics.hard_pruned_sum += pruned;
                 if (graph.size() < static_cast<std::size_t>(cfg.query_k) &&
                     exact.size() >= static_cast<std::size_t>(cfg.query_k)) {
                     ++metrics.insufficient;
@@ -559,9 +577,7 @@ std::unordered_map<std::string, Metrics> by_profile;
                           << std::setprecision(8) << recall << ","
                           << graph_seconds * 1000.0 << ","
                           << exact_seconds * 1000.0 << ","
-                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_hop_count() << ","
-                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_distance_eval_count() << ","
-                          << indexes[static_cast<std::size_t>(navigation_slot)]->last_hard_pruned_count() << ","
+                          << hops << "," << distances << "," << pruned << ","
                           << graph.size() << ","
                           << ((graph.size() < static_cast<std::size_t>(cfg.query_k) &&
                                exact.size() >= static_cast<std::size_t>(cfg.query_k)) ? 1 : 0);
