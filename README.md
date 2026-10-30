@@ -4,7 +4,7 @@ DANA extends one-dimensional Dynamic Segment Graphs to conjunctive multi-attribu
 
 This repository contains the reproducibility artifact and subsequent maintenance fixes. It includes C++ source, workload generators, benchmark drivers, compact workload definitions, validation datasets, paper-point summaries, and audit metadata. Historical experiment source hashes and current release checksums are recorded separately under `reproducibility/`. Public vectors and generated indexes are intentionally excluded because they are large and redistributability varies.
 
-The frozen submission artifact is [paper-artifact-v3](https://github.com/Guo-dp/DANA/tree/paper-artifact-v3). It includes stable-ID maintenance after snapshot rebuilds and the DEEP-10M default-threshold recovery source data for Table 9 / Figure 6(c). Earlier artifact tags remain unchanged.
+The frozen paper artifact is [paper-artifact-v4](https://github.com/Guo-dp/DANA/tree/paper-artifact-v4). Its [protocol record](reproducibility/PAPER_PROTOCOL.md) fixes the evaluation settings and separates historical measurements from current maintenance validation. It includes stable-ID fixes, sequential capture/replay, partial-deployment and update interfaces, and the default-threshold recovery records. Earlier tags remain unchanged; `paper-artifact-v3` remains the historical regression baseline.
 
 ## Method Scope
 
